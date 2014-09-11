@@ -1,0 +1,299 @@
+#title More Bells and Whistles: Beyond TDD with Functional Programming
+#author Arnaud Bailly - Christophe Thibaut
+
+***  The Message
+
+ - We are Haskell fans 
+ - We do not use it at work 
+ - Why ?
+ - Let's Try Together !
+
+*** What Haskell could be good for in IT shop ?
+
+ - Application Server programming ?
+ - Database programming ?
+ - GUI Programming ?
+ - Modeling ! Protyping ! DSLs ! Code Generation !
+ - **Testing** ! **Testing** ! **Testing** !
+
+  "Life is too short for manual testing."
+
+*Harry Robinson*, Test Architect for Microsoft's Engineering
+Excellence Group
+
+*** Agenda
+
+ - **Intro**: T0
+ - **Quickcheck**: T0 + 10'
+ - **Pause**: T0 + 1h20'
+ - **Case study**: T0 + 1h30'
+ - **Aftermath**: T0 + 2h45'
+
+*** Introduction
+
+ - **Who ?**
+    - *Arnaud Bailly*, [[http://www.oqube.com][Independent]] Software Developer
+    - *Christophe Thibaut*, Agile Coach at [[http://www.octo.com][Octo Technology]]
+    - The Audience
+ - **What ?** Evaluating the use of Haskell as a *Model-Based Testing* tool
+   for legacy code (eg. Java)
+ - **How ?**
+    1. Learning QuickCheck
+    2. Applying QuickCheck
+    3. Evaluating QuickCheck
+
+*** Quickcheck
+
+*** Quickcheck
+
+ - A tool for *Property* and *Type-directed testing*: Using type structure
+   and type inference to generate test cases expressing some desirable
+   properties of a function
+ - **Traits**:
+     1. Expressing a **property** about some **function**
+     2. Generating (semi-)random **test data** from **types definition**
+     3. Filtering through predicate logic
+
+*** We (sometimes) need something different than TDD
+
+QuickCheck || TDD
+Declare a **property** of the SUT and make the code hold it | Implement the SUT one single **example** at a time 
+Automatic exploration of corner cases through fuzzy testing | Need to think about potential corner cases
+Keep your black-box abstraction safe | Need discipline to prevent glass-box testing to creep-in
+
+Of course, we can have the best of both worlds !
+
+*** Introductory example: compute sublists
+
+ - **The Problem**: computing all the sublists of a given list.
+ - **Method**:
+    1. state a simple property that **all** sublists should possess
+    2. narrow it to some (small) definite size 
+    3. make it pass with the simplest implementation possible
+    4. loop *until* acceptance testing pass.
+
+*** Introductory example: compute sublists
+
+<src lang="haskell">
+sublists []      == [[]]
+sublists [1,4,6] == [[],[1],[4],[6],[1,4],[1,6],[4,6],[1,4,6]]
+</src>
+
+*** Introductory example: The Kata
+
+*** Other example: Bootstrapping
+
+ - Testing a *more efficient* version of some code:
+    - state a (simple) property in terms of some existing (inefficient)
+      implementation 
+    - use this to test-drive the development of a more efficient one
+    - *Example*: the Rent Your Own Aeroplane and Make Money problem
+      (remember Monday's BOF session ? )
+        Given an ordered list of plane reservation requests, compute
+        the schedule of *compatible* requests that maximizes turnover
+
+*** Other example: Complex algorithms
+
+ - Problem definition is easily stated using some (mathematical) property
+ - **but** algorithm is complex and/or convoluted
+    - Shortest path in a graph
+    - Convex hull of a set of points
+
+*** Other example: Expressing "Ordering" of a List
+
+ - Several possible algorithms for sorting lists: bubble, insert sort,
+   quicksort, you name it !
+ - Property can be expressed without reference to the algorithm
+
+     A list of points is ordered iff:
+        - it is empty,
+        - or it has one element,
+        - or the first element is lower or equal than all the others. 
+
+*** Verify Haskell's own sort function !!
+
+<src lang="haskell">
+ prop_Ordered:: [ Int ] -> Bool
+prop_Ordered [] = True
+prop_Ordered [x] = True
+prop_Ordered (x:y:xs) = x <= y && (ordered y:xs) 
+
+quickCheck (prop_Ordered . Data.List.sort)
+</src>
+
+*** Pause
+
+*** The Automatic Teller Machine Case Study
+
+*** The Agenda
+
+ - Explain the context, the goal and the tools
+ - Form groups, with access to a laptop and a paperboard
+ - Design the model of the SUT
+ - Implement (part of) the model in Haskell
+ - Implement test-case generators from this model using QuickCheck
+ - Wrap-up
+
+*** The Goal
+
+ - *Collectively* assess the usability of QuickCheck as a tool for **Model-Based
+   Testing** of real-world applications...
+ - by working on a (simplified) real problem, eg. testing a Java
+   application...
+ - using a known testing framework: [[http://fitnesse.org][FitNesse/Slim]]
+ - while getting our hands dirty
+
+*** Our Model-Based Testing Approach
+
+ - Design a **Model** that is **relevant** for your testing
+   purpose
+ - Several possible formalisms: Pre/Post Conditions (ie. Hoare's
+   logic), UML Statecharts & diagrams, Finite State Machines...
+ - Implement the model using **Haskell**
+ - Generate test-data from this model using QuickCheck
+ - Test the SUT through the necessary plumbing using the generated
+   test-cases 
+
+*** The Big Picture
+
+[[site/resources/archi-slim-haskell.png][Slim-Haskell Test-bed architecture]]
+
+*** The Automatic Teller Machine
+
+<src lang="sh">
+> java -cp .:atm.jar oqube.dab.app.Main -e
+Language is set to English
+Lauching CLI application...
+Insert your card
+> card
+
+Enter pincode
+> 1234
+Pincode OK
+Select your operation: 
+1 - Account's balance
+2 - Withdraw money
+0 - Exit
+
+> 1
+Your account balance is 100
+> 2
+
+Enter amount requested
+> 50
+delivering: 10 -> 0, 20 -> 0, 50 -> 1, 100 -> 0
+Retrieve money from dispenser  
+Select your operation: 
+1 - Account's balance
+2 - Withdraw money
+0 - Exit
+
+> 1
+Your account balance is 50
+> 0
+
+Insert your card
+> \q
+Exiting
+
+</src>
+
+*** Java interface
+
+<src lang="java">
+package oqube.dab;
+public class ATMFixture {
+  public ATMFixture() {
+  public void insertCard(String pin, String account, int failedCode)
+      throws CardInvalidException, BankException {
+  public boolean enterPinCode(String code) throws CardInvalidException,
+      BankException {
+  public void setAccountBalance(String accountNo, int balance)
+      throws BankException {
+  public void selectWithdraw() {}
+  public void withdrawal(int amount) throws CardInvalidException, BankException {
+  public int getBalance() throws BankException {
+  public void withdrawCard() {
+}
+</src>
+
+*** Go !
+
+You Need:
+ - Some paper to model the SUT
+ - A working Haskell environment with QuickCheck to implement the
+   model
+ - The java code to play with (see [[#31][Java files]] )
+
+Some advices:
+ - *Keep It Small and Simple* (Simplify the problem)
+ - *Ask the system*: GHCi is your best friend !
+ - *Ask For Help* !
+
+*** Wrap-up
+
+*** Open Questions
+
+ - Real-real-world usage of *model-based testing* outside telco ? 
+ - Is it worth the effort learning Haskell to *write better* Java ?
+ - Is all this *convincing* about Functional programming in general and
+   Haskell in particular ? 
+ - Is there a niche for Haskell in testing or writing DSTLs ?
+ - What is missing here ?
+
+*** References
+
+**QuickCheck**:
+ - The Original one in [[http://www.cs.chalmers.se/~rjmh/QuickCheck/][Haskell]]. Interesting papers can be found on
+   [[http://www.cs.chalmers.se/~koen/pubs/filter-topic-functional-programming.html][Koen Claessen]]'s page
+ - Quickcheck in [[http://code.google.com/p/scalacheck/][Scala]]: Scalacheck, allows expressing properties
+   within a JVM
+ - Quickcheck in [[http://en.wikipedia.org/wiki/Reductio][Java]]: Reductio, For the adventurous and somewhat dying
+ - Quickcheck in [[http://quviq.com/][Erlang]]: Commercial tool for testing telco software
+
+**Others**:
+ - **Practical Model-Based Testing**, *Utting & Legeard*, Addison-Wesley,
+   *2007*
+ - **Real World Haskell**, Goerzen et al., O'Reilly, 2009
+
+*** Conclusion
+
+  - **Implication**: When a thing is untyped, you cannot generate
+    meaningful tests easily:
+      - Do Use Strong Typing (eg. =newtype= in Haskell)
+      - Don't Use String for Coding.
+  - **Test-case generation** and Model-Based Testing are cool !
+
+*** Thanks
+
+ - The anonymous reviewers and SPA 2009 selection committee for
+   having allowed this to happen
+ - Our shepherd Giovanni Asproni for his time and comments
+ - Simon Peyton-Jones for his enlightening talk and all his work
+
+*** Questions ?
+
+*** Resources
+
+*** Haskell code
+
+ - [[haskell/src/ATM.hs][ATM code]] and [[haskell/src/ATMTest.hs][Tests]]
+ - [[haskell/src/ATMGen.hs][ATM QuickCheck code]]
+ - [[haskell/src/ATMSlim.hs][ATM <-> Slim protocol]] and [[haskell/src/ATMSlimTest.hs][Tests]]
+ - [[haskell/src/Slim.hs][Base Slim]] and [[haskell/src/SlimTest.hs][Tests]]
+ - [[haskell/src/SlimClient.hs][Slim network client]]
+ - [[haskell/src/AllTests.hs][ATM Test generation and execution]]
+
+*** Java code
+
+ - [[java/atm/pom.xml][Root of ATM Poms]]
+ - [[haskell/src/atm.jar][Compiled and executable JAR File for ATM]]
+ - [[haskell/src/fitnesse.jar][Compiled Jar File for Fitnesse/Slim]]
+ - [[java/atm/dab-app/card][Sample card file]]
+ - [[java/atm/dab-app/mybank.properties][Sample Bank file]]
+ - [[java/atm/dab-app/mydispenser.properties][Sample Dispenser file]]
+
+**Note**: card, bank and dispenser files need to be present in the
+*classpath* for proper execution of ATM
+
+

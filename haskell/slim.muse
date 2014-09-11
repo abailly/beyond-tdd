@@ -1,0 +1,495 @@
+#title Implementing a Slim client
+#author Arnaud Bailly / Christophe Thibaut
+
+The slim protocol is described [[http://www.fitnesse.org/FitNesse.SliM.SlimProtocol][here]]. This is a basic text-based
+protocol for *Remote Procedure Call*.
+
+* Basic I/O
+
+We first define the basic data structures exchanged. Client send some
+instructions:
+
+<src lang="haskell" name="Slim.hs"> 
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE OverlappingInstances #-}
+{-# LANGUAGE IncoherentInstances #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+
+module Slim where
+import Text.Printf
+import Control.Monad
+import Text.ParserCombinators.Parsec
+
+data Instruction id = Import id Path
+                 | Make  id Instance Class  [ Argument ]
+                 | Call  id  Instance Method [ Argument ]
+                 | CallAndAssign  id Instance Symbol Method [ Argument ]
+                deriving (Eq,Show, Read)
+
+type Path     = String
+type Instance = String
+type Class    = String
+type Method   = String
+type Symbol   = String
+type Argument = String
+</src>
+
+and receive some responses:
+ - either the result of the instruction executed,
+ - or an exception describing some failure.
+
+<src lang="haskell" name="Slim.hs">
+data Answer = OK NestedList
+            | KO String
+           deriving (Eq, Show)
+</src>
+
+The =NestedListOfStrings= type is the Haskell representation of the
+basic structure of Slim, which understand only strings and arbitrarily
+nested lists. 
+
+<src lang="haskell" name="Slim.hs">
+data NestedList = S String
+                | L [ NestedList ]
+                        deriving (Eq,Show)
+</src>
+
+Note that although strings and list are basic types of Haskell, we
+need to create a datatype here because, of course, arbitrarily nested
+lists of strings may not be typed using standard lists. It may be
+possible to type them using *heterogeneous lists* or *nested type
+variables*. 
+
+Our first (unit) tests must check that we can correctly encode
+instructions and decode answers. We start testing encoding and
+decoding of the NestedList data structure.
+
+<src lang="haskell" name="SlimTest.hs" hidden="true" >
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE OverlappingInstances #-}
+{-# LANGUAGE IncoherentInstances #-}
+
+import Test.HUnit
+import Test.QuickCheck
+import Control.Monad(replicateM,foldM,liftM)
+import IO (stderr)
+import Data.Maybe
+import Slim
+import SlimClient
+
+runTest :: Test -> IO Counts
+runTest  t = do (counts, _) <- runTestText (putTextToHandle stderr False) t
+		return counts
+
+runUnitTests = runTest $ TestList [
+			   canEncodeNestedLists
+                          ,canEncodeInstructions
+                          ,canDecodeAnswer
+                          ,slimClientSendAndReceiveMessages
+			  ]
+
+main = runUnitTests >> runQuickCheck where
+  runQuickCheck = sequence tests_QuickCheck
+
+</src>
+
+Function =encode= is defined in a type class =SlimEncodable=, for which we
+define an instance for NestedList.
+
+<src lang="haskell" name="Slim.hs">
+
+class SlimEncodable a where
+  encode :: a -> String
+
+aLength l = printf "%06d" (length l)
+
+instance SlimEncodable String where
+  encode string = aLength string ++ ":" ++  string
+
+instance SlimEncodable NestedList where
+   encode (S s) = encode s
+   encode (L l) = encode string
+        where
+           string = concat [
+                             "["
+                           , aLength l
+                           , ":"
+                           , (concatMap (( ++ ":") . encode) l)
+                           , "]"
+                           ]
+</src>
+
+Here are the tests for encoding NestedList instances.
+
+<src lang="haskell" name="SlimTest.hs">
+canEncodeNestedLists =
+   TestList [
+        (encode $ S "some.clas.path" )
+            ~?= "000014:some.clas.path"
+       ,(encode $ L [] )
+            ~?= "000009:[000000:]"
+       ,(encode $ L [S "some.clas.path"] )
+            ~?= "000031:[000001:000014:some.clas.path:]"
+       ,(encode $ L [S "some.clas.path", S "else"] )
+            ~?= "000043:[000002:000014:some.clas.path:000004:else:]"
+       ,(encode $ L [S "some.clas.path", L [S "else", S "other"]] )
+            ~?= "000073:[000002:000014:some.clas.path:000034:[000002:000004:else:000005:other:]:]"
+     ]
+
+</src>
+
+We can then move to define =decode= in a similar way: First a class,
+then the associated instances. Note the
+possibility of an error in decoding. This implies that decoding does
+not return a simple value, but a =Maybe= value: If =Nothing= is returned,
+then this indicates failure to parse the input string (a protocol
+failure).
+
+<src lang="haskell" name="Slim.hs">
+
+class SlimDecodable a where
+  decode :: String -> Maybe a 
+
+instance SlimDecodable NestedList where
+  decode s = case (runParser slimparser "" "" s) of
+                       Left e   -> Nothing
+                       Right ts -> Just ts
+
+</src>
+
+Decoding amounts to parsing some string which can most easily be done
+in Haskell using *parser combinators* from the well-known *Parsec*
+library.
+
+In developing our decoder for NestedLIst, we can leverage existing
+encoder defining tests with QuickCheck. Decoding should be the inverse
+of encoding for properly encoded structures, which can easily be
+expresed through a very compact QuickCheck property.
+
+We first need a way to create some arbitrary nested lists:
+
+<src lang="haskell"  name="SlimTest.hs">
+instance Arbitrary NestedList where
+  arbitrary = frequency [
+                    (3, liftM S arbitrary)
+                   ,(1, liftM L arbitrary)
+                  ]
+</src>
+
+Then our property:
+
+<src lang="haskell" name="SlimTest.hs">
+tests_QuickCheck :: [IO Result]
+tests_QuickCheck = [
+                    quickCheckResult prop_decodeIsInverseToEncodeForNestedList
+                   ]
+
+prop_decodeIsInverseToEncodeForNestedList s  =
+   (roundtrip s) == s
+  where
+    roundtrip :: NestedList -> NestedList
+    roundtrip = (fromJust . decode . encode )
+</src>
+
+Running our tests without further definitions (ie. proper definition
+for decode) yields the following output:
+
+<example>
+          Codec roundtrip : 0:
+S ""
+#                                (0)
+
+    ** test 1 of Codec roundtrip failed with the binding(s)
+    **   S ""
+</example>
+
+From this, we can start developping our =decode= function for nested
+list of strings, one step at a time in TDD style.
+
+<src lang="haskell" name="Slim.hs">
+readInt :: String -> Int
+readInt s = x where (x,_):_ = (reads :: String -> [(Int,String)]) s
+
+slimparser  =   do len <- lengthOfData ; char ':'
+                   (listParser <|> stringParser len)
+            where
+	      contentOfLength n = count n anyChar
+	      lengthOfData      = count 6 digit >>= (return .  readInt)
+	      manyStrings n     = count n (do nest <- slimparser; char ':'
+	                                      return nest)
+	      stringParser len  = contentOfLength len >>= (return . S)
+	      listParser        = do char '[' 
+	                      	     size    <- lengthOfData     ; char ':'
+	                      	     strings <- manyStrings size ; char ']'
+	                      	     return $ L strings
+</src>
+
+Having handled our basic data type, we can move to the user-level
+types, =Instruction= and =Answer=. We make the first one an instance of
+=SlimEncodable= and the second one of =SlimDecodable=, then define some
+tests to check proper encoding and decoding. To construct an =Answer=,
+the parsed string is scanned for its first string element which must
+the constant =EXCEPTION=. 
+
+First some tests:
+
+<src lang="haskell" name="SlimTest.hs">
+canEncodeInstructions =
+   TestList [
+        (encode $ Import "id_1" "some.clas.path" )
+            ~?= "000057:[000003:000004:id_1:000006:import:000014:some.clas.path:]"
+       ,(encode $ Make  "id_2" "toto" "some.Class" ["1", "arg"] )
+            ~?= "000083:[000006:000004:id_2:000004:make:000004:toto:000010:some.Class:000001:1:000003:arg:]"
+       ,(encode $ Call  "id_2" "toto" "someMethod" ["1", "arg", "12"] )
+            ~?= "000093:[000007:000004:id_2:000004:call:000004:toto:000010:someMethod:000001:1:000003:arg:000002:12:]"
+       ,(encode $ CallAndAssign  "id_2" "X" "toto" "someMethod" ["1", "arg",
+   "12"] )
+            ~?= "000111:[000008:000004:id_2:000013:callAndAssign:000001:X:000004:toto:000010:someMethod:000001:1:000003:arg:000002:12:]"
+     ]
+</src>
+
+Then definition for encoding of the =Instruction= type is nearly trivial and
+follows closely the protocol's specification. We need an instance for
+encoding list of =SlimEncodable= elements.
+
+<src lang="haskell" name="Slim.hs">
+instance (SlimEncodable a) => SlimEncodable [ a ] where
+  encode l  = encode' l "" where
+      encode' []     l@(x:_)  = encode (l ++ "]")
+      encode' (x:xs) l'@(y:_) = encode' xs (l' ++ (encode x) ++ ":")
+      encode' l'        []    = encode' l' ("["
+                                  ++ aLength l'
+                                  ++ ":")
+
+instance SlimEncodable (Instruction String) where
+  encode (Import id path)
+       = encode [ id , "import", path ] 
+  encode (Make id inst cls args)
+       = encode ( [ id , "make", inst, cls ] ++ args)
+  encode (Call id inst meth args)
+       = encode ( [ id , "call", inst, meth ] ++ args)
+  encode (CallAndAssign id symbol inst meth args)
+       = encode ( [ id , "callAndAssign", symbol, inst, meth ] ++  args)
+
+instance SlimDecodable Answer where
+  decode s = let
+               nest = decode s  :: Maybe NestedList
+             in case nest of
+                 Just (S ('_':'_':'E':'X':'C':'E':'P':'T':'I':'O':'N':'_':'_':':': message ))
+                    -> Just $ KO message
+                 Just r -> Just $ OK r
+                 Nothing -> Nothing
+</src>
+
+Here are some tests for converting =Answer=:
+
+<src lang="haskell" name="SlimTest.hs">
+canDecodeAnswer =
+   TestList [
+        (decode $ "000002:OK" )
+            ~?= Just (OK $ S "OK")
+      , (decode $ "000019:__EXCEPTION__:error" )
+            ~?= Just (KO "error")
+     ]
+</src>
+
+* Slim Client
+
+We are now ready to communicate with a Slim server instance, sending
+him instructions to run and getting back answers after execution of
+the given code. The missing part is the plumbing needed to:
+ 1. launch a real slim server, which is actually a java application,
+ 2. connect to this server and exchange instructions and answers.
+
+To be able to test this low-level code, we need to 
+communicate with a real Slim server and connect through standard
+network sockets to it. [[http://www.fitnesse.org][Fitnesse]] distribution come equipped with some
+samples to explain the framework's mechanisms. The 2-minute example used
+is some simple code to test a division, laid out into what is called a
+*column fixture* in fitnesse, in other words a table where columns
+represent either inputs or outputs from the SUT:
+
+|eg.Division |
+|numerator | 	denominator |	quotient?|
+|10 	|2 	|5.0|
+
+This table should be translated into the following instructions to
+Slim, with the =quotient?= column representing the expected answers.
+
+<src lang="haskell" name="SlimTest.hs">
+testDivisionInput = [
+ Make "1" "division" "eg.Division" [],
+ Call "2" "division" "setNumerator" [ "10" ],
+ Call "3" "division" "setDenominator" [ "2" ],
+ Call "4" "division" "quotient" []
+ ]
+
+</src>
+
+and the corresponding answers from the Slim should be:
+
+<src lang="haskell" name="SlimTest.hs">
+testDivisionOutput = OK $ L [L [S "1",S "OK"],L [S "2",S "/__VOID__/"],L [S "3",S "/__VOID__/"],L [S "4",S "5.0"]]
+
+</src>
+
+So our basic test is quite simple:
+
+<src lang="haskell" name="SlimTest.hs">
+
+slimClientSendAndReceiveMessages =
+   "slim client" ~: 
+   (slimClient 8888 testDivisionInput >>=
+       (assertEqual "correct i/o with slim" (Just testDivisionOutput)))
+</src>
+
+We will create this function in a new module dedicated to this
+low-level communication called =SlimClient=. 
+
+<src lang="haskell" name="SlimClient.hs" hidden="true" >
+module SlimClient(slimClient) where
+import Slim
+import Data.ByteString.UTF8 (fromString, toString)
+import qualified Data.ByteString as B
+import System.Process
+import System.IO
+import Network
+import Control.Concurrent
+import Control.Monad
+import Data.Maybe
+import Text.Printf
+import System.IO
+    
+</src>
+
+The main method offered by this client is =slimClient=, a method that
+runs in IO monad and does the 2 things we need: launch a Slim server
+and connects to it for sending instructions and receiving answers:
+
+<src lang="haskell" name="SlimClient.hs" >
+slimClient :: Integer -> [ Instruction String ] -> IO (Maybe Answer)
+slimClient port call = do proc <- startSlim port
+                          threadDelay 5000000  -- UGLY
+                          answer <- sendSlim call port
+                          terminateProcess proc
+                          return answer
+</src>
+
+**Note**: we use =threadDelay= to wait for Slim server to be ready, which is
+quite ugly and error prone.
+
+Method =startSlim= is very straightforward, it uses standard Haskell
+library to run a process and returns:
+
+<src lang="haskell" name="SlimClient.hs" >
+startSlim :: Integer -> IO (ProcessHandle)
+startSlim port = (runCommand $ "java -cp /home/nono/soft/fitnesse/fitnesse.jar  fitnesse.slim.SlimService " ++ (show port))                   
+</src>
+
+**Note**: classpath is hardcoded, which is just as ugly as using a fixed
+timer to wait for a process. We shall fix this later by providing a
+way to configure the client.
+
+Method =sendSlim= is a bit more complicated, it takes a list of
+instructions, a port number and returns possibly an answer:
+<src lang="haskell" name="SlimClient.hs" >
+sendSlim :: [ Instruction  String ] -> Integer -> IO (Maybe Answer)
+</src>
+<src lang="haskell" name="SlimClient.hs" hidden="true" >
+sendSlim insts port = 
+</src>
+
+We start by encoding the instructions' list into a proper string:
+<src lang="haskell" name="SlimClient.hs" >
+      do let msgs = encode insts
+</src>
+
+then we connect to the server we just launched before and read the
+banner line,
+
+<src lang="haskell" name="SlimClient.hs" >
+         cnx <- connectTo "localhost" (PortNumber $ fromInteger port)
+         hSetBuffering cnx (BlockBuffering Nothing)
+         hGetLine cnx
+</src>
+
+and send the data, not forgetting to flush the output stream
+<src lang="haskell" name="SlimClient.hs" >
+         B.hPutStrLn cnx (fromString msgs)
+         hFlush cnx
+</src>
+
+then finally reads the answer and returns it
+<src lang="haskell" name="SlimClient.hs" >
+         answer <- countAnswerChars cnx >>= readAnswer cnx
+         return $ (decode answer :: Maybe Answer)
+</src>
+
+We use a couple of functions while decoding the answer:
+
+<src lang="haskell" name="SlimClient.hs" >
+          where
+            countAnswerChars :: Handle -> IO Int
+            countAnswerChars h = B.hGet h 6 >>= return . readInt . toString
+            readAnswer :: Handle -> Int -> IO String
+            readAnswer h n = B.hGet h (n+1) >>= return . (( printf "%06d" n) ++) . toString 
+</src>
+
+** Configuring Slim client & Higher-level interface
+
+Our first version of Slim client is very crude: Paths is hardcoded,
+raw answers are returned in the Maybe functor, no errors are
+checked... We want to define a higher-level interface that would be
+more handy:
+
+<src lang="haskell">
+runSlim :: SlimConfiguration -> [ Instruction ] -> IO [ (Instruction,  Answer) ]
+</src>
+
+We need to: 
+ 1. configure Slim executor for things like path to Java program, path
+    to fitnesse archive, port to connect to, 
+ 2. given a list of instructions, get the answer for each
+    instruction.
+
+We first need to match emitted *instructions* with received *answers*,
+which means constructing a list of answers from a single =Answer= in
+list form and match the instruction *id* with the answer's *id*.
+
+<src lang="haskell" name="Slim.hs" >
+matchQandA :: [Instruction a] -> Maybe Answer -> [ (Instruction a, Answer)]
+matchQandA _  _ = []
+</src>
+
+<src lang="haskell" name="SlimTest.hs">
+matchInstructionsToAnswers =
+   "match instructions" ~: 
+   matchQandA testDivisionInput (Just testDivisionOutput)  ~?= 
+    [
+     (Make "1" "division" "eg.Division" [], OK $ S "OK"),
+     (Call "2" "division" "setNumerator" [ "10" ], OK $ S "/__VOID__/"),
+     (Call "3" "division" "setDenominator" [ "2" ], OK $ S "/__VOID__/"),
+     (Call "4" "division" "quotient" [], OK $ S "5.0")
+    ]
+</src>
+
+
+
+* Exchanging Messages
+
+We left aside the problem of exchanging messages within the Slim
+protocol. In Slim, each *instruction* is identified by a string which is
+reused to identify the associated *answer*. Obviously, each Slim exchange is basically
+of the type =Instruction -> Answer=. But usually, we are given a list of
+instructions (ie. a test table) from which we get a list of answers.
+
+We now define a higher-level interface to Slim that should 
+<src lang="haskell" name="Slim.hs">
+class (Monad s) => SlimMessenger s where
+    importPath    :: Path -> s ()
+    makeOject     :: Instance -> Class -> [ Argument ] -> s ()
+    call          :: Instance -> Method -> [ Argument ] -> s a
+    callAndAssign :: Instance -> Symbol -> Method -> [ Argument ] -> s a
+</src>

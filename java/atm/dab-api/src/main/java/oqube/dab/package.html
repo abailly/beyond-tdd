@@ -1,0 +1,42 @@
+<html>
+  <body>
+    <h1>Automatic Cash Dispenser Specifications.</h1>
+
+<p>
+This interface specifies the behavior of an automatic cash dispenser
+that delivers money. It works in conjunction with {@link oqube.dab.Dispenser} , {@link oqube.dab.CardReader} 
+and {@link oqube.dab.Bank} interfaces.</p>
+This behavior follows the following rules:
+<ul>
+<li>method {@link oqube.dab.DAB#insert()}  must be the first method called (conceptually, it 
+is called by the card reader in response to user input). This method 
+induces a call to {@link oqube.dab.CardReader}  to check for the number of failed pincode 
+input attempts. If this number is greater than or equals three, the the card is 
+retained (call {@link oqube.dab.CardReader#retainCard()}  and an exception is thrown</li>
+<li>Method {@link oqube.dab.DAB#pinCode(int)} must then be called: 
+<ul>
+<li>The code checking is delegated to {@link oqube.dab.CardReader#checkCode(int)} ,</li>
+<li>There may be no more than 2 failed attempts or else the card is retained and
+an exception is thrown</li>
+</ul></li>
+<li>User can then do {@link oqube.dab.DAB#withdrawal(int)} or {@link oqube.dab.DAB#balance()}  operations. 
+These operations induces calls to {@link oqube.dab.Bank#withdraw(String,int)}  and {@link oqube.dab.Bank#balance(String)} . 
+The account number is retrieved using {@link oqube.dab.CardReader#accountNo()} . These
+operations may fail if the corresponding calls to the bank fail for whatever reason: 
+invalid account number, not enough money...</li>
+<li>Withdrawal implies call to {@link oqube.dab.Dispenser#deliver(int[])} with the notes 
+breakdown for the requested amount. This call may fail if the cash dispenser 
+cannot deliver requested notes.</li>
+<li>Operation terminates when {@link oqube.dab.DAB#withdrawCard()}  is called which normally 
+generates a call to {@link oqube.dab.CardReader#returnCard()} . </li>
+</ul>
+
+
+    <hr>
+    <address><a href="mailto:abailly@oqube.com">Arnaud Bailly</a></address>
+<!-- Created: Fri Jul  7 11:30:09 CEST 2006 -->
+<!-- hhmts start -->
+Last modified: Fri Jul  7 12:27:46 CEST 2006
+<!-- hhmts end -->
+  </body>
+</html>

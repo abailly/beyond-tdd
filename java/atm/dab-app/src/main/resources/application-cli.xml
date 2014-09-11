@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE beans PUBLIC "-//SPRING//DTD BEAN 2.0//EN" "http://www.springframework.org/dtd/spring-beans-2.0.dtd">
+
+<!--
+  - Root application context for the Command-line DAB application.
+  -->
+<beans>
+ 
+ <!-- the message source to use -->
+ <bean id="messageSource" class="org.springframework.context.support.ResourceBundleMessageSource" >
+    <property name="basename" value="oqube.dab.cli.messages" />
+ </bean>
+ 
+ <!-- main application for CLI client -->
+ <bean id="main" class="oqube.dab.cli.Main">
+  <property name="initialState" ref="init" />
+  <property name="debug" value="true" />
+ </bean>
+ 
+ <!-- the core implementation of DAB -->
+ <bean id="dab" class="oqube.dab.ATMImpl" >
+  <property name="cardReader" ref="cardReader" />
+  <property name="dispenser" ref="decorator" />
+  <property name="bank" ref="decorator" />
+ </bean>
+ 
+ <!-- callback components -->
+ <bean id="cardReader" class="oqube.dab.cli.CLICardReader" />
+
+ <bean id="realdispenser" class="oqube.dab.cli.CLIDispenser" >
+  <constructor-arg type="java.io.File" value="./mydispenser.properties" />
+ </bean>
+
+ <!-- the bank -->
+<bean id="realbank" class="oqube.dab.BankImpl">
+  <constructor-arg type="java.io.File" value="./mybank.properties" />
+</bean>
+ 
+<bean id="decorator" class="oqube.dab.app.BankLifecycleDecorator">
+  <property name="realdispenser" ref="realdispenser" />
+  <property name="realBank" ref="realbank" />
+</bean>
+
+<!-- template state configuration -->
+ <bean id="state" abstract="true" >
+  <property name="cardReader">
+   <ref bean="cardReader" />
+  </property>
+  <property name="dab" ref="dab" />
+ <property name="messages" ref="messageSource" />
+</bean>
+
+ <!-- the various states of CLI app -->
+ <bean id="init" class="oqube.dab.cli.InsertCardState" parent="state">
+  <property name="next" ref="enterPin" />
+ </bean>
+
+ <bean id="enterPin" class="oqube.dab.cli.EnterPinState" parent="state">
+  <property name="next" ref="select" />
+  <property name="cardRetained" ref="cardRetained" />
+  <property name="insertCard" ref="init" />
+ </bean>
+
+ <bean id="cardRetained" class="oqube.dab.cli.CardRetainedState" parent="state">
+  <property name="next" ref="init" />
+ </bean>
+
+
+ <bean id="select" class="oqube.dab.cli.SelectOpState" parent="state">
+  <property name="next" ref="init" />
+  <property name="withdraw" ref="withdraw" />
+ </bean>
+
+ <bean id="withdraw" class="oqube.dab.cli.WithdrawState" parent="state">
+  <property name="next" ref="select" />
+  <property name="error" ref="select" />
+ </bean>
+
+</beans>

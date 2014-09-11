@@ -1,0 +1,74 @@
+* Notes
+
+** About workshop 2010-06-04
+
+ - we need to hide more technical details to ease use of framework:
+    - technicalities on (monadic) generators with Quickcheck, provide
+      basic combinators for enumerating states, inputs, outputs,
+      transitions
+    - automata generation should be generic, which is quite easy to do
+      now that we have some experience (ie. 2 different problems
+    - hide 'liftM2', '<$>' and others into more meaningful
+      combinators, names that explicitly relate to generation
+ - automaton based models should be more easy to derive. There is lot
+   of opportunity to generalize some stuff, like 'actions' or 'eval'
+   given some specific structure. I think a typeclass would be handy
+   here, something like
+#+BEGIN_SRC haskell
+class Automaton a st in out where
+   eval :: (st, in, out, st) -> a -> ((st, in, out, st), a)
+#+END_SRC
+ - in ATM.hs, there is a lot of generic code that links automaton to
+   State monads (and State monad transformers). This code should be
+   generified.
+ - we did not go through Slim interaction with the login example,
+   which is another layer of complexity that should also be
+   alleviated. My intuition is that providing a generic automaton
+   monad transformer would come handy here, allowing easy wrapping and
+   composition of specialized Slim calls
+ - The idea is that users should need to write:
+    - for the *model*: the states, the inputs and outputs, and
+      transition rules. Transition closures should be provided by the
+      automaton mechanics
+    - for the *generators*: atomic generators for states, inputs and
+      outputs according to basic combinators, sample data sets (like
+      'users' in LoginGen.hs)
+    - for slim interaction: transformations of inputs to slim calls
+      and slim returns to output, ie. interpretation of the
+      call/return interaction according to current state of the SUT
+ - provide some way of testing on the fly models/generators/slim. It
+   should be easy to develop the various components of a model in an
+   incremental/iterative way thanks to library functions (eg. like
+   'genAutomaton').
+
+** Questions/Ideas
+
+ - justify the whole process: Why bother developing a testable model? 
+ - repeat examples
+ - generalize principles to other forms of MBT, maybe without
+   automaton (eg. data driven testing, combinatorial testing,
+   pairwise/n-wise testing...). 
+ - Combinatorial logic testing might be another interesting example
+   because it is very easy to generate a simple grammar of logic
+   combinators, provide basic generators for atomic propositions, then
+   produce arbitrary logical expressions over those propositions,
+   provide an oracle in the form of a truth table (very handy and
+   nicely formatted in Haskell) then test a SUT. Could be done using
+   the IRPP sample I developed for teaching combinatorial/partition
+   testing
+ - provide a way to plug Haskell models directly in Fitnesse. 
+ - write a Fit server in Haskell (useful for the former)
+
+* Things to do before Agile 2010
+** Arnaud
+*** DONE cabalization de HSlim
+*** TODO documentation, liens, papiers sur test generation de FSA
+*** TODO lien vers Computer article concernant tests de WS
+*** TODO mettre le package en CI
+** Christophe
+*** TODO MAJ environnement
+*** TODO jouer avec le bouzin
+** Both
+*** TODO trouver un web-service pour jouer avec
+  - amazon
+  - doodle

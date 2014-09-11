@@ -1,0 +1,79 @@
+#title Testing web applications with Haskell
+#author Arnaud Bailly & Christophe Thibaut
+
+* Introduction
+
+ - **Base idea**: use a fitnesse-like mechanism to design, implement and
+   run functional-level tests written in Haskell.
+ - goal is to use Quickcheck power to *generate* lot of tests for a
+   given application, modelling it as a Finite State Automaton
+ - first example is this file and is dedicated to test a *web
+   application*:
+     - Haskell is used in [[http://www.haskell.org/haskellwiki/Literate_programming][literate form]] for writing tests
+     - It uses a [[http://code.google.com/p/webdriver/][WebDriver]] backend (proxied through [[http://wikis.sun.com/display/Jersey/Main][Jersey]] RESTful
+       API) to drive a concrete application
+     - test results are formatted along with the literate code using java
+       muse formatter
+
+* First test
+
+We want to model a web site. The idea is to reflect the structure of
+the site into a set of mutually recursive datatypes:
+ - to each *page* (ie. *state*) of the system corresponds a data type;
+ - each possible transition from one page to another is a *constructor*
+   of the starting page that usually has a parameter of the type of
+   the destination page.
+
+<src lang="haskell" name="Test.hs">
+module Main where
+import Test.QuickCheck
+import Control.Monad
+    
+data NotLogged = LogOk LoggedIn
+	       | LogKo NotLogged
+               | Stop
+		 deriving (Eq, Ord,Show)
+
+data LoggedIn  = Logout NotLogged
+	       | Preferences Preferences
+		 deriving (Eq, Ord,Show)
+
+data Preferences = SelectThemes Themes
+                 | Save LoggedIn
+		 deriving (Eq, Ord,Show)
+
+data Themes  = IntraLm Preferences
+             | Default Preferences
+	       deriving (Eq, Ord,Show)
+			
+</src>
+
+We defined here 4 pages with hopefully self-explicit names. As we want
+to make use of quickcheck to produce test cases (ie. sequencs of
+interactions) from those types, we need to define instances for
+=Arbitrary= class. These instances are really simple, just enumerate the
+various paths. 
+
+<src lang="haskell" name="Test.hs">
+instance Arbitrary NotLogged where
+    arbitrary = oneof [ return Stop
+                      , liftM LogOk arbitrary
+                      , liftM LogKo arbitrary
+                      ]
+
+instance Arbitrary LoggedIn where
+    arbitrary = oneof [ liftM Logout arbitrary
+                      , liftM Preferences arbitrary
+                      ]
+
+instance Arbitrary Preferences where
+    arbitrary = frequency [ (1, liftM SelectThemes arbitrary)
+                          , (2, liftM Save arbitrary)
+                          ]
+
+instance Arbitrary Themes where
+    arbitrary = oneof [ liftM IntraLm arbitrary
+                      , liftM Default arbitrary
+                      ]
+</src>
+

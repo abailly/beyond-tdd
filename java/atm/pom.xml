@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>oqube</groupId>
+  <artifactId>atm</artifactId>
+  <version>1</version>
+  <packaging>pom</packaging>
+  <name>Electronic Cash Dispenser</name>
+  <url>http://www.oqube.com/projects/qualite/</url>
+
+  <inceptionYear>2006</inceptionYear>
+
+  <developers>
+    
+    <developer>
+      <name>Arnaud Bailly </name>
+      <id>bailly</id>
+      <email>abailly AT oqube POINT com</email>
+      <organization>OQube</organization>
+      <roles>
+	<role>Developper</role>
+      </roles>
+    </developer>
+    
+  </developers>
+
+  <dependencyManagement>
+    <dependencies>
+      
+      <dependency>
+	<groupId>junit</groupId>
+	<artifactId>junit</artifactId>
+	<version>4.7</version>
+      </dependency>
+      
+    </dependencies>
+  </dependencyManagement>
+  
+  <modules>
+    <module>dab</module>
+    <module>dab-api</module>
+    <module>dab-cli</module>
+    <module>dab-backend</module>
+    <module>dab-app</module>
+    <module>login</module>
+  </modules>
+
+  <build>
+
+      <plugins>
+
+	<plugin>
+	  <artifactId>maven-compiler-plugin</artifactId>
+	  <configuration>	
+	    <source>1.5</source>
+	    <target>1.5</target>
+	    <fork>true</fork>
+	  </configuration>
+	</plugin>
+	<plugin>
+	  <artifactId>maven-surefire-plugin</artifactId>
+	  <configuration>
+	    <argLine>-ea</argLine>
+	  </configuration>
+	</plugin>
+	<!-- generate sources jar -->
+	<plugin>
+	  <groupId>org.apache.maven.plugins</groupId>
+	  <artifactId>maven-source-plugin</artifactId>
+	  <executions>
+	    <execution>
+	      <id>makesource</id>
+	      <goals>
+		<goal>jar</goal>
+	      </goals>
+	    </execution>
+	  </executions>
+	</plugin>
+
+	<plugin>
+	  <groupId>org.apache.maven.plugins</groupId>
+	  <artifactId>maven-site-plugin</artifactId>
+	  <configuration>
+	    <inputEncoding>UTF-8</inputEncoding>
+	    <outputEncoding>UTF-8</outputEncoding>
+	  </configuration>
+	</plugin>
+
+	<plugin>
+	  <groupId>org.apache.maven.plugins</groupId>
+	  <artifactId>maven-resources-plugin</artifactId>
+	  <configuration>
+	    <inputEncoding>UTF-8</inputEncoding>
+	  </configuration>
+	</plugin>
+
+      </plugins>
+  </build>
+  
+
+  <profiles>
+    <profile>
+      <id>local</id>
+      <distributionManagement>
+
+	<snapshotRepository>
+	  <id>temp-repo</id>
+	  <name>OQube temporary repository</name>
+	  <url>file:///var/www/maven2</url>
+	</snapshotRepository>
+
+	<repository>
+	  <id>temp-repo</id>
+	  <name>OQube temporary repository</name>
+	  <url>file:///var/www/maven2</url>
+	</repository>
+
+	<site>
+	  <id>temp-web</id>
+	  <url>file:///var/www/projects/qualite/</url>
+	</site>
+
+      </distributionManagement>
+    </profile>
+
+    <profile>
+      <id>remote</id>
+      <distributionManagement>
+	
+
+	<snapshotRepository>
+	  <id>temp-repo</id>
+	  <name>OQube temporary repository</name>
+	  <url>file:///var/www/maven2</url>
+	</snapshotRepository>
+
+	<site>
+	  <id>oqube.com</id>
+	  <url>
+	    scp://www.oqube.com/var/www/projects/cours-test
+	  </url>
+	</site>
+
+	<repository>
+	  <id>oqube.com</id>
+	  <name>OQube public repository</name>
+	  <url>
+	    scp://www.oqube.com/var/www/maven2
+	  </url>
+	</repository>
+	
+      </distributionManagement>
+    </profile>
+  </profiles>
+
+</project>

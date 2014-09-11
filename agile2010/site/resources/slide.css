@@ -1,0 +1,27 @@
+body { background: #222; color: #FFF; font-family: Helvetica, Arial; font-size: 16px; }
+textarea { overflow: auto; }
+textarea, #pre { font-size: 150%; font-weight:bold;width: 100%; height: 600px; font-family: Monaco, Courier New; background: #000; color: #FFF; margin: 0; border: 0; padding: 0 0 0 5px; }
+#content { font-size: 20px; width: 100%; height: 600px;  color: #FFF; overflow: auto; margin: 0; border: 0; padding: 0 0 0 5px; }
+#container, #pre, #content { position: absolute; top: 50px; width: 100%; }
+#code { z-index: 1; }
+#pre { z-index: 2; white-space: pre; }
+em {color: lightblue;}
+strong {color: orange;}
+ol#toc { list-style-type: none; }
+#content { z-index: 2; font-size: 200%; }
+#slideshow { position: absolute; top: 30px; left: 1%; width: 98%;}
+div.titre { font-size: 36px;font-weight:bold; z-index: 3; }
+div.large { position: absolute; top: 200px; left: 0; width: 100%; font-size: 56px; text-align: center; }
+div.buttons { position: absolute; top: 0px; right: 5px; }
+input.run { font-weight: bold; }
+a { color: #EEE; text-decoration: none; border-bottom: 1px solid #EEE; }
+.FAIL b, .ERROR b { color: red; /* #990066 */ }
+.PASS b { color: #73C836; }
+#results { line-height: 1.3em; font-size: 18px; }
+#testform { margin: 20px; background-color: #023; padding: 10px;}
+img { padding: 10px; margin: 5px; }
+table { border-collapse: collapse; margin: 0.3em; }
+th { background: #333; }
+td,th { border-collapse: true; border: thin solid white; padding: 0.2em; }
+code { white-space: pre; }
+quote { margin: 20px; display: block; color: yellow; }

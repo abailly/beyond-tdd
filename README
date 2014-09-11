@@ -1,0 +1,8 @@
+java: contains source code for case studies
+haskell: source code and literate muse files for haskell case studies:
+ - atm case
+ - webdriver case
+scala: source code for scalacheck samples
+plan.muse: slideshow sources (to be generated with muse-slides)
+literate-muse.jar: java standalone application for literate muse parsing
+

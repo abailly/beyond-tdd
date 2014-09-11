@@ -1,0 +1,23 @@
+<assembly>
+  <id>executable</id>
+  <formats>
+    <format>jar</format>
+  </formats>
+  <includeBaseDirectory>false</includeBaseDirectory>
+ <fileSets>
+  <!-- the generated archive -->
+  <fileSet>
+   <directory>target/classes</directory>
+   <outputDirectory>/</outputDirectory>
+   <includes>
+     <include>*.*</include>
+   </includes>
+   </fileSet>
+ </fileSets>
+ <dependencySets>
+  <dependencySet>
+    <unpack>true</unpack>
+    <outputDirectory>/</outputDirectory>
+  </dependencySet>
+ </dependencySets>
+</assembly>

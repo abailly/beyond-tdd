@@ -1,0 +1,127 @@
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE FlexibleContexts #-}
+module IOAutomaton.IOAutomaton (
+                                IOAutomaton(..),
+                                Trace(T),
+                                Transition,
+                                eval,
+                                actionST,
+                                evalST,
+                                runAutomaton,
+                                evalTrace
+                                ) where
+import Control.Monad
+import Control.Monad.State
+
+-- | An IOAutomaton is a special kind of finite state automata.
+-- Formally, the kind of IOAutomaton that we use can be defined as a tuple 
+-- (Q,q0,Sink,I,O,\delta) where:
+--   - Q is the set of states of the automaton
+--   - q0 is the distinguished initial state
+--   - Sink is the distingused terminal state
+--   - I is the input alphabet, an arbitrary type
+--   - O is the output alphatbet, another arbitrary type
+--   - \delta \subseteq Q x I x O x (Q \cup Sink) the set of transitions of the automaton
+--  
+-- A specific IOAutomaton instance is a model of the behavior of some 
+-- system under test that can be used to:
+--  - generate traces, ie. specialized tests cases representing possible behavior
+--    of the SUT
+--  - validate output of the SUT against expectations (eg. play the role of an oracle)
+-- 
+-- Here we distinguish the set of formal states of the automaton (q) and the 
+-- state of the model (st), the latter usually being much more complex.
+class IOAutomaton a where
+  type Input  a :: *
+  type Output a :: *
+  type Status a :: *
+  
+  -- ^Initial state of the automaton
+  init :: a
+  
+  -- ^Terminal state. Note that as we consider only finite systems but one 
+  -- that can run forever and produce arbitrarily long traces, terminal state
+  -- is a sink state. Reaching terminal state is considered a failure.
+  sink :: a -> Status a
+  
+  -- ^Input accessor.
+  input :: (Status a, Input a, Output a, Status a) -> Input a
+  input (_,i,_,_) = i
+  
+  -- ^Output accessor.
+  output :: (Status a, Input a, Output a, Status a) -> Output a
+  output (_,_,o,_) = o
+  
+  -- ^Action of the automaton. 
+  -- This action is considered a failure, eg. an unacceptable transition in this 
+  -- automaton's model state if it returns Nothing as first member of returned.
+  action :: Input a -> a -> (Maybe (Output a), a)
+  
+  -- ^Associated formal state of a model state
+  state :: a -> Status a
+
+type Transition a = (Status a, Input a, Output a, Status a)
+
+type Action a = (Input a, Output a, Status a)
+
+-- |Evaluate a single transition given a certain Automaton
+-- This function relies on the underlying 'action' function to apply
+-- the transition's input to the current state. 
+eval :: (IOAutomaton a, Eq (Status a)) => Transition a -> a -> (Transition a, a) 
+eval t@(s, i, o, e) st | s == sink st = (t,st)
+eval   (s, i, o, e) st                = eval' (action i st)
+     where
+       eval' v = case v of
+         (Just o', st')  -> ((s, i ,o', state st'), st')
+         (Nothing, st' ) -> ((s, i ,o, sink st'), st')
+
+-- | Injects action into State transformer monad.
+-- Given a transition, it is applied in the context of a StateT monad
+-- whose state is the underlying automaton and whose result type is thus
+-- an output or a failure.
+actionST :: (Monad m, IOAutomaton a) =>  
+            Transition a  ->
+            StateT a m (Maybe (Output a))
+actionST (s, i, o ,e) = StateT (return . (action i))
+
+-- | Evaluate a transition within a State transformer.
+-- The state of the StateT monad is the underlying automaton and 
+-- the result of running the eval inside the monad is another transition
+evalST :: (Monad m, IOAutomaton a, Eq (Status a)) => 
+          Transition a->  
+          StateT a  m (Transition a)
+evalST t = StateT (return . (eval t))
+
+transition :: (IOAutomaton a) => Status a -> Action a -> Transition a
+transition st (i,o,f) = (st, i, o , f)
+
+-- |Traces over an automaton.
+-- A trace is simply a sequence of transitions.
+newtype Trace a =  T [ Transition a ]
+
+-- | Executes a complete trace in a given automaton within the StateT transformer monad.
+-- The trace is run over some initial state and produces a final state and a result which
+-- is deduced from sequencing actions over the trace: It can be either Nothing, meaning that
+-- at some point the action produced an incorrect output, or some output.
+runAutomaton  :: (Monad m, IOAutomaton a) =>
+     Trace a ->
+     a ->
+     m (Maybe (Output a), a)
+runAutomaton (T transitions) =  runStateT (sequence (map (actionST) transitions) >>= makeLastState)
+    where
+      makeLastState :: (Monad m) => [Maybe a] -> m (Maybe a)
+      makeLastState []     = return Nothing
+      makeLastState [x]    = return x
+      makeLastState (x:xs) = makeLastState xs
+
+-- | Evaluates a trace and produces a new trace.
+-- This function is similar to runAutomaton but produces a new trace instead of a result
+-- and a new state. It is intended to be used as a way to filter candidate traces arising from
+-- the use of generators.
+evalTrace :: (IOAutomaton a, Eq(Status a) ) =>
+            Trace a  ->
+            a ->
+            Trace a
+evalTrace (T transitions) = T . evalState (sequence $ map (State . eval) transitions)

@@ -1,0 +1,13 @@
+* Things to do before Agile 2010
+** Arnaud
+*** DONE cabalization de HSlim
+*** TODO documentation, liens, papiers sur test generation de FSA
+*** TODO lien vers Computer article concernant tests de WS
+*** TODO mettre le package en CI
+** Christophe
+*** TODO MAJ environnement
+*** TODO jouer avec le bouzin
+** Both
+*** TODO trouver un web-service pour jouer avec
+  - amazon
+  - doodle

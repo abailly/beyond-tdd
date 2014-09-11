@@ -1,0 +1,6 @@
+#title Electronic Cash Dispenser
+#author Arnaud Bailly
+
+A simple simulation of an ATM for retrieving cash
+
+The compiled code can be downloaded at [[http://www.oqube.com/maven2/oqube/dab/dab/1.0/dab-1.0.jar]].

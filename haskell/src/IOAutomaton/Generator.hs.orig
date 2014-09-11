@@ -1,0 +1,48 @@
+{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE TypeFamilies #-}
+module IOAutomaton.Generator where
+import Test.QuickCheck
+import qualified IOAutomaton.IOAutomaton as A
+import Data.Maybe(fromJust)
+import Control.Monad 
+
+-- |Apply a given function over all elements of a list and select one of the
+-- results.
+selector :: (Arbitrary b) => [a] -> (a -> b) -> Gen b
+selector list ctor = oneof (map (return . ctor) list)
+
+-- |Specific IOAutomaton models provide instances of this class to generate 
+-- 'valid' traces.
+class (A.IOAutomaton a, Arbitrary (A.Status a), Arbitrary (A.Input a), Arbitrary (A.Output a)) => 
+      TransitionGenerator a where
+  someTransition :: A.Status a -> Gen (A.Transition a)
+  startState     :: A.Status a
+  transitions    :: A.Status a -> Int -> Gen [A.Transition a]
+  transitions st 0 = return []
+  transitions st n = do t@(_,_,_,st') <- someTransition st
+                        rest <- transitions st' (n-1)
+                        return $ (t : rest)
+
+-- | Given a transition generator and some atomic components generators, 
+-- we can define an arbitrary trace instance.
+instance (TransitionGenerator a) 
+         => Arbitrary (A.Trace a) where
+  arbitrary = liftM A.T (sized (transitions startState))
+
+  
+-- |Generate valid traces to stdout.
+-- This function is mainly used for testing purpose as it allows one to easily 
+-- generates a bunch of traces for a given model.
+generate :: (TransitionGenerator a) => a -> IO ()
+generate init = do candidates <- (sample' arbitrary)
+                   putStrLn $ "generating " ++ show (length candidates) ++ " candidates"
+                   let accepted = filter (select init) candidates
+                   putStrLn $ "selecting " ++ show (length accepted) ++ " traces"
+                   sequence $ map (putStrLn . show) accepted
+                   return ()
+                where
+                  select :: (A.IOAutomaton a) => a -> A.Trace a -> Bool
+                  select st a = (fst $ fromJust $ A.runAutomaton a st) /= Nothing

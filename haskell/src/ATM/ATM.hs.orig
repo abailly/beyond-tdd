@@ -1,0 +1,157 @@
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE TypeFamilies #-}
+
+module ATM.ATM where 
+import qualified IOAutomaton.IOAutomaton as A
+import qualified Control.Monad.State as S
+import qualified Data.Map as M
+import Control.Monad
+import Control.Monad.State
+
+type CardRetained = String
+
+type Note = (Int,Int)
+
+data Card = Card { pin :: Pincode,
+                   accountNo :: AccountNo,
+                   failedCode :: Int }
+          deriving (Eq, Show)
+                   
+newtype Pincode = Pin String deriving (Eq, Show, Read)
+
+newtype AccountNo = Acc String deriving (Eq, Show, Read, Ord)
+    
+data ATMState = Init
+              | EnteringPin
+              | SelectingAction
+              | SelectingAmount
+              | Sink
+                deriving (Eq, Show)
+
+data ATMInput = EnterCard Card
+              | EnterPinCode Pincode
+              | WithdrawMoney
+              | EnterAmount Int
+              | GetBalance
+              | Exit
+                deriving (Eq, Show)
+
+data ATMOutput = FailedCode
+               | CardRetained
+               | SelectOperation
+               | NotEnoughBalance
+               | DeliverNotes
+               | Bal Int
+               | OK
+               | Bye
+                 deriving (Eq, Show)
+
+data AtmState = Atm { state :: ATMState
+                    , card :: Maybe Card
+                    , bank :: Bank }
+                deriving (Eq, Show)
+                         
+newtype Bank = Bank (M.Map AccountNo Int) deriving (Eq, Show)
+
+type Path a = [ A.Transition AtmState ]
+    
+type ATMMachine = A.Trace AtmState
+
+exit :: AtmState -> (Maybe ATMOutput, AtmState)
+exit (Atm _ _ b) =  (Just Bye, Atm Init Nothing b)
+        
+enterCard :: Card -> AtmState -> (Maybe ATMOutput, AtmState)
+enterCard c (Atm Init Nothing b) | failedCode c <= 2 = (Just OK, Atm  EnteringPin (Just c) b)
+                                 | otherwise         = (Just CardRetained, Atm Init Nothing b)
+enterCard _  s                                       = (Nothing, s { state = Sink} )
+
+enterPin :: Pincode -> AtmState -> (Maybe ATMOutput, AtmState)
+enterPin p (Atm EnteringPin (Just c@(Card p' _  _)) b) | p == p'   = (Just OK, Atm SelectingAction (Just c) b)
+enterPin p (Atm EnteringPin (Just c@(Card p' _  f)) b) | f < 2     = (Just FailedCode, Atm EnteringPin (Just c') b)
+                                                       | otherwise = (Just CardRetained, Atm Init Nothing b)
+                                                       where
+                                                         c' = c { failedCode = (failedCode c) + 1}
+enterPin _ s                                                       = (Nothing, s { state = Sink} )
+
+withdrawMoney :: AtmState -> (Maybe ATMOutput, AtmState)
+withdrawMoney (Atm SelectingAction c b)  = (Just OK, (Atm SelectingAmount c b) )
+withdrawMoney s                          = (Nothing, s { state = Sink} )
+
+enterAmount :: Int -> AtmState -> (Maybe ATMOutput, AtmState)
+enterAmount sum (Atm s (Just c@(Card  _ accountNo _)) b@(Bank m))
+    | (M.findWithDefault 0 accountNo m) >= sum  = (Just DeliverNotes, Atm SelectingAction (Just c) (Bank $ M.adjust ((-) sum) accountNo m))
+    | otherwise                                 = (Just NotEnoughBalance, Atm SelectingAction (Just c) b)
+enterAmount  _ s                                = (Nothing, s {state = Sink} )
+
+getBalance :: AtmState -> (Maybe ATMOutput, AtmState)
+getBalance (Atm SelectingAction (Just c@(Card  _ accountNo _)) b@(Bank m)) =  (Bal `fmap` (M.lookup accountNo m), Atm SelectingAction (Just c) b)
+getBalance s                                                               = (Nothing, s { state = Sink} )
+    
+initAtm :: AtmState
+initAtm = Atm Init Nothing (Bank M.empty)
+          
+input :: A.Transition AtmState -> ATMInput 
+input (s,i,o,e) = i
+
+output :: A.Transition AtmState -> ATMOutput 
+output (s,i,o,e) = o
+
+action :: ATMInput -> AtmState -> (Maybe ATMOutput, AtmState)
+action (EnterCard c)    = enterCard c
+action (EnterPinCode p) = enterPin p
+action (EnterAmount m)  = enterAmount m
+action (WithdrawMoney)  = withdrawMoney
+action (GetBalance)     = getBalance
+action (Exit)           = exit
+
+instance A.IOAutomaton AtmState where
+  type A.Input AtmState  = ATMInput
+  type A.Output AtmState = ATMOutput
+  type A.Status AtmState = ATMState
+  init                = initAtm
+  sink    _           = Sink
+  input               = input
+  output              = output
+  action              = action
+  state  (Atm s _ _)  = s
+
+type StateOfAtm = State AtmState (Maybe ATMOutput)
+
+class (Monad m) => ATM m a where
+    startATM'      :: m a
+    exit'          :: m a
+    enterCard'     :: Card -> m a
+    enterPin'      :: Pincode -> m a
+    withdrawMoney' :: m a
+    enterAmount'   :: Int -> m a
+    getBalance'    :: m a
+    
+instance ATM (State AtmState) (Maybe ATMOutput) where
+    startATM'      = State (\ s -> (Just OK, s))
+    exit'          = State exit
+    enterCard'     = State . enterCard
+    enterPin'      = State . enterPin
+    withdrawMoney' = State withdrawMoney
+    enterAmount'   = State . enterAmount
+    getBalance'    = State getBalance
+    
+instance (Monad m) => ATM (StateT AtmState m) (Maybe ATMOutput) where
+    startATM'        = StateT (\ s -> return (Just OK, s))
+    exit'            = StateT (return . exit)
+    enterPin'      p = StateT (return . enterPin p)
+    withdrawMoney'   = StateT (return . withdrawMoney)
+    enterAmount'   a = StateT (return . enterAmount a)
+    getBalance'      = StateT (return . getBalance)
+    enterCard'     c = StateT (return . enterCard c)
+
+
+evalATM :: A.Transition AtmState -> State AtmState (A.Transition AtmState)
+evalATM = State . A.eval
+
+isValidPath []                = True
+isValidPath ((s,i,o,Sink):xs) = False
+isValidPath (_:xs)            = isValidPath xs
+

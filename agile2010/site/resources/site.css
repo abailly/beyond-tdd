@@ -1,0 +1,122 @@
+
+quote { 
+  margin-left: 10px;
+  margin-right : 10px;
+  display:block;
+  background:#eee;
+}
+
+
+.code a[href] {
+background-color: white;
+color: lightblue;
+font-style: italic;
+text-decoration: none;
+}
+
+.java_type {
+color: blue;
+}
+
+.java_javadoc_comment {
+color: red;
+}
+
+.java_comment{
+color: grey;
+}
+
+.java_keyword {
+font-weight: bold;
+}
+
+.java_literal {
+color: green;
+}
+
+.haskell_plain {
+ color: rgb(0,0,0);
+}
+	
+.haskell_keyword {
+ color: rgb(0,0,0); 
+ font-weight: bold;
+}
+
+.haskell_ctor{
+ color: rgb(0,44,221);
+}
+
+.haskell_conop {
+ color: rgb(0,44,221);
+}
+
+.haskell_op {
+  color: rgb(0,124,31);
+}
+
+.haskell_varop {
+  color: rgb(0,124,31);
+}
+
+.haskell_delimiter {
+ color: rgb(0,33,255);
+}
+
+.haskell_literal {
+ color: rgb(188,0,0);
+}
+
+.haskell_comment {
+ color: rgb(147,147,147); 
+ background-color: rgb(247,247,247);
+}
+
+.python_plain {
+ color: rgb(0,0,0);
+}
+	
+.python_keyword {
+ color: rgb(0,0,0); 
+ font-weight: bold;
+}
+
+.python_decorator{
+ color: rgb(0,44,221);
+}
+
+.python_operator {
+  color: rgb(0,124,31);
+}
+
+.python_delimiter {
+ color: rgb(0,33,255);
+}
+
+.python_literal {
+ color: rgb(188,0,0);
+}
+
+.python_identifier {
+ color: rgb(0,0,0);
+}
+
+.python_comment {
+ color: rgb(147,147,147); 
+ background-color: rgb(247,247,247);
+}
+
+table {
+background: #eee;
+border-collapse: collapse;
+}
+
+tr {
+border: thin solid navy;
+}
+
+td {
+border: thin solid navy;
+padding: 3px;
+}
+

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE beans PUBLIC "-//SPRING//DTD BEAN 2.0//EN" "http://www.springframework.org/dtd/spring-beans-2.0.dtd">
+
+<!--
+  - Root application context for the Command-line DAB application.
+  -->
+<beans>
+ 
+ <!-- the bank -->
+<bean id="realbank" class="oqube.dab.BankImpl">
+  <constructor-arg type="java.io.File" value="mybanktest.properties" />
+</bean>
+ 
+ <bean id="realdispenser" class="oqube.dab.cli.CLIDispenser" >
+  <constructor-arg type="java.io.File" value="./mydispenser.properties" />
+ </bean>
+
+<bean id="bank" class="oqube.dab.app.BankLifecycleDecorator" autowire="byType" />
+ </beans>

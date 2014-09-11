@@ -1,0 +1,184 @@
+<?xml  version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd" >
+<html>
+<html>
+<head>
+<title>More Bells and Whistles</title>
+<link rel="stylesheet" href="site/resources/recipes.css"/>
+<link rel="stylesheet" href="site/resources/slide.css"/>
+<script src="site/resources/jquery.js"></script>
+<script src="site/resources/jquery.chili.js"></script>
+<script src="site/resources/recipes.js"></script>
+<script src="site/resources/slide.js"></script>
+</head>
+  <body>
+    <div id="slideshow">
+	<div id="titre" class="titre">Le titre</div>
+	<div id="content"></div>
+	<pre id="pre" class="javascript"></pre>
+	<form id="form">
+	  <div class="buttons">
+	    <input type="submit" value="Run" class="run" id="run"/>
+	    <input type="button" id="prev" value="&laquo; Prev"/>
+	    <input type="button" id="next" value="Next &raquo;"/>
+	  </div>
+	  <div id="container">
+	    <textarea id="code" wrap="off"></textarea>
+	    <ol id="results"></ol>
+	  </div>
+	</form>
+    </div>
+    <div id="slides" style="display: none;">
+<div id="Agenda"  class="slide" ><h3>Agenda<a name="Agenda"></a></h3>
+<ul><li><strong>Intro</strong><ul><li>who ? how ? </li>
+<li>TDD is good but not enough (!?) </li>
+</ul>
+</li>
+<li><strong>Quickcheck</strong>: a tool for <em>Property based testing</em> (PDD ?) and <em>type-directed testing</em> (using type structure and type inference to generate test cases) <ul><li>introduction to QuickCheck: 30' </li>
+<li>example sublist </li>
+</ul>
+</li>
+<li><strong>1st Case study</strong>: (60') Testing Automatic Teller Machine controller with I/O on command-line <ul><li>collective design ? design session for 15' producing a clear model (using protocols/games) </li>
+<li>modelling the thing </li>
+<li>introduction to <a href="http://www.cs.york.ac.uk/fp/smallcheck/" >Smallcheck</a>: 10' <table><tr><td> &nbsp; &nbsp;- generating test cases with (Quick</td><td>Small)Check</td></tr>
+</table>
+</li>
+</ul>
+</li>
+<li><strong>Aftermath</strong>: (20') <ul><li><strong>Implication</strong>: don't use Strings ! don't used untyped things ! When a thing is untyped, you cannot generate meaningful tests. </li>
+<li><strong>Test-case generation</strong> and Model-Based Testing </li>
+</ul>
+</li>
+</ul>
+</div>
+<div id="Introduction"  class="slide" ><h3>Introduction<a name="Introduction"></a></h3>
+<ul><li>who ? </li>
+<li>how ? </li>
+<li><strong>why ?</strong><ol><li>Motivate the use of a type-directed test tool that generates test data from test definitions, </li>
+<li>Demonstrate the use of such a tool on real <em>legacy code</em></li>
+<li>Putting the power of Haskell and functional programming into the hands of testers and programmers, </li>
+<li>Have fun ! </li>
+</ol>
+</li>
+</ul>
+</div>
+<div id="TDD-is-Good---"  class="slide" ><h3>TDD is Good...<a name="TDD-is-Good---"></a></h3>
+</div>
+<div id="----But"  class="slide" ><h3>... But<a name="----But"></a></h3>
+<ul><li>doing TDD is an example of <a href="http://en.wikipedia.org/wiki/Abductive_reasoning" >abductive</a> reasoning: one infers most likely hypotheses from observed consequences </li>
+<li>if I test with a, b, c instances of X, then it is ok <strong>for all</strong> X </li>
+<li>however small the steps may be, TDD requires at one moment or another an <em>act of faith</em></li>
+<li>inductive reasoning </li>
+</ul>
+</div>
+<div id="We--sometimes--need-something-different"  class="slide" ><h3>We (sometimes) need something different<a name="We--sometimes--need-something-different"></a></h3>
+<ul><li>thinking about a <strong>property</strong> of the SUT and trying to implement it (rather than making it emerge through TDD and refactoring) </li>
+<li>testing more thoroughly an implementation, reaching corner cases, fuzzy testing </li>
+<li>reusing an existing solution as a <em>test oracle</em> to develop a new (maybe more efficient) version without having to create new test cases </li>
+</ul>
+</div>
+<div id="Quickcheck"  class="slide" ><h3>Quickcheck<a name="Quickcheck"></a></h3>
+</div>
+<div id="Introductory-example--compute-sublists"  class="slide" ><h3>Introductory example: compute sublists<a name="Introductory-example--compute-sublists"></a></h3>
+<ul><li><strong>The Problem</strong>: computing all the sublists of a given list. </li>
+</ul>
+<pre class="example">sublists [1,4,6] == [[],[1],[4],[6],[1,4],[1,6],[4,6],[1,4,6]]
+</pre></div>
+<div id="Introductory-example--compute-sublists"  class="slide" ><h3>Introductory example: compute sublists<a name="Introductory-example--compute-sublists"></a></h3>
+<ul><li><strong>The Problem</strong>: computing all the sublists of a given list. </li>
+</ul>
+<pre class="example">sublists [1,4,6] == [[],[1],[4],[6],[1,4],[1,6],[4,6],[1,4,6]]
+</pre><ul><li><strong>Method</strong><ol><li>state a simple property that <strong>all</strong> sublists should possess </li>
+<li>narrow it to some (small) definite size &nbsp;</li>
+<li>make it pass with the simplest implementation possible </li>
+<li>loop <em>until</em></li>
+</ol>
+</li>
+</ul>
+</div>
+<div id="Introductory-example"  class="slide" ><h3>Introductory example<a name="Introductory-example"></a></h3>
+<center><strong>The Kata</strong></center>
+</div>
+<div id="Other-example--Bootstrapping"  class="slide" ><h3>Other example: Bootstrapping<a name="Other-example--Bootstrapping"></a></h3>
+<ul><li>Testing a <em>more efficient</em> version of some code: <ul><li>state a (simple) property in terms of some existing (inefficient) implementation &nbsp;</li>
+<li>use this to test-drive the development of a more efficient one </li>
+<li>example: the Lags problem in <em>Scala</em><quote>Get the sublist from an ordered list requests that has all <em>compatible</em> requests and the maximum turnover </quote>
+</li>
+</ul>
+</li>
+</ul>
+</div>
+<div id="Other-example--Complex-algorithms"  class="slide" ><h3>Other example: Complex algorithms<a name="Other-example--Complex-algorithms"></a></h3>
+<ul><li>Problem definition is easily stated using some (mathematical) property </li>
+<li><strong>but</strong> algorithm is complex and/or convoluted <ul><li>Shortest path in a graph </li>
+<li>Convex hull of a set of points </li>
+</ul>
+</li>
+</ul>
+</div>
+<div id="Other-example--Computing-convex-hull"  class="slide" ><h3>Other example: Computing convex hull<a name="Other-example--Computing-convex-hull"></a></h3>
+<ul><li>Several possible algorithms for computing the convex hull of a set of points: eg. <a href="http://en.wikipedia.org/wiki/Graham_scan" >Graham scan</a></li>
+<li>Convex hull for a set of ordered points can be expressed with a simple property: &nbsp;<em>Given an ordered path of points defining the convex hull of a set of points, for each segment of the path, the vector product of this segment's vector and the vector to another point from the set has same sign (either + or -, depending on the order one traverse the path)</em></li>
+</ul>
+</div>
+<div id="Pause"  class="slide" ><h3>Pause<a name="Pause"></a></h3>
+</div>
+<div id="ATM-Case-Study"  class="slide" ><h3>ATM Case Study<a name="ATM-Case-Study"></a></h3>
+<ul><li><strong>Goal</strong><ul><li>assess the usability of QuickCheck as a tool for <strong>Model-Based Testing</strong> of real-world applications... </li>
+<li>by working on a (simplified) real problem, eg. testing a Java application... </li>
+<li>using a known testing framework: <a href="http://fitnesse.org" >FitNesse/Slim</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div id="ATM-Case-Study--Agenda"  class="slide" ><h3>ATM Case Study: Agenda<a name="ATM-Case-Study--Agenda"></a></h3>
+<ul><li>Each group has access to a binary obfuscated version of the command-line implementation of an ATM's controller program, eg. some <em>legacy code</em> to test </li>
+<li>We have some library code to test the ATM using <a href="http://fitnesse.org/FitNesse.SliM.SlimProtocol" >Slim protocol</a><ul><li>A Haskell implementation of a Slim client </li>
+<li>A Java fixture wrapping the implemenation </li>
+<li>A Haskell library for generating Slim instructions to test the Java code </li>
+</ul>
+</li>
+<li>Ask each group to: <ol><li>test the application, </li>
+<li>produce a <em>FSM model</em> for the program </li>
+</ol>
+</li>
+</ul>
+</div>
+<div id="ATM--The-Model"  class="slide" ><h3>ATM: The Model<a name="ATM--The-Model"></a></h3>
+<ul><li>Use basic UML 2 State Machine language (see <a href="http://www.agilemodeling.com/artifacts/stateMachineDiagram.htm" >Scott Ambler</a>'s introduction) </li>
+<li>States are rounded rectangles, possibly with a name </li>
+<li>Transitions are labelled with an <em>input event</em>, possibly decorated with a <em>guard</em> and an <em>output action</em></li>
+<li>Initial and Final states are distinguished </li>
+</ul>
+</div>
+<div id="Source-code"  class="slide" ><h3>Source code<a name="Source-code"></a></h3>
+<ul><li><a href="dab.html">Literate source code for the ATM tester</a></li>
+<li><a href="slim.html">Literate source code for the SLIM protocol client</a></li>
+</ul>
+</div>
+<div id="Conclusion"  class="slide" ><h3>Conclusion<a name="Conclusion"></a></h3>
+</div>
+<div id="QuickCheck-exists-in-Various-flavors"  class="slide" ><h3>QuickCheck exists in Various flavors<a name="QuickCheck-exists-in-Various-flavors"></a></h3>
+<ul><li>Quickcheck in Haskell </li>
+<li>Quickcheck in Scala </li>
+<li>Quickcheck in Java </li>
+<li>Quickcheck in Erland </li>
+</ul>
+</div>
+<div id="Conclusion"  class="slide" ><h3>Conclusion<a name="Conclusion"></a></h3>
+</div>
+<div id="References"  class="slide" ><h3>References<a name="References"></a></h3>
+</div>
+<div id="Thanks"  class="slide" ><h3>Thanks<a name="Thanks"></a></h3>
+</div>
+<div id="Questions--"  class="slide" ><h3>Questions ?<a name="Questions--"></a></h3>
+</div>
+<div id="Links"  class="slide" ><h3>Links<a name="Links"></a></h3>
+<ul><li>http://www.infoq.com/news/2009/01/rwh-book-interview </li>
+</ul>
+</div>
+      </div>
+    </div>
+  </body>
+</html>
+</html>

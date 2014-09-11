@@ -1,0 +1,291 @@
+/* Oqubestyle CSS version 0.2 final (05/07/2007) */
+
+
+body {
+font-family: "Garamond", "Times New Roman", Times;
+color: #222;
+padding-top:0;
+margin-top:0;
+font-size:12pt;
+//background-color: #f90;
+	}
+
+a[href]	{
+	text-decoration:none;
+	color: #66B3FF;
+	}
+	
+a[href]:hover{
+	text-decoration: underline;
+	}
+
+/*eviter le bold dans un texte, preferer l'italique d'emphase*/
+strong {
+	font-weight: bold;
+}
+
+a:visited:hover {}
+
+/* Automatise l'ajout de  ">" après un lien, Netscape6 CSS 2 seulement */
+a[href]:after {content:">";} 
+
+img  {border: none;} /* éviter l'affiche d'un cadre-lien autour d'une image pour Internet explorer */
+
+#logobase {
+  float:left;
+};
+
+/*titre de section/rubrique dans la page
+USAGE : <h1>$titre</h1>
+*/
+h1 {
+	font-size:140%;
+	color:#09F;
+	font-weight: bold;
+	border-top: none #999;
+	border-right: none #999;
+	border-bottom: 2px solid #999;
+	border-left: none #999;
+	width: auto;
+	padding-bottom: 3px;
+	}
+
+/* utiliser pour les titres d'articles
+USAGE : <h2>$titre de mon article<h2>
+*/
+h2{
+	color:#09F;
+	font-size: 120%;
+	font-weight: bold;
+	margin-top: 2%;
+	border-bottom: 1px solid #bbb;
+	margin-bottom: 0%;
+	}
+		
+h3{
+	color:#222;
+	font-size: 100%;
+	font-style: italic;
+	margin-top: 2%;
+	border-bottom: 1px dashed #bbb;
+	margin-bottom: 0%;
+	}
+		
+
+/* ------------------------Styles divers--------------- */
+
+/*enlever les 'Content CSS', utile pour les liens image
+NB. vérifier s'il n'ya pas une methode plus simple d'atteindre directement <a><img></a> a img:after {content:"";}
+USAGE : <a class="ClearContent><img ...*/ 
+.ClearContent:after {content:"";}
+.ClearContent:before {content:"";}
+	
+/*style pour la date d'un article
+USAGE: <span class="date>$date */
+.date {
+	font-family: "Courier New", Courier, mono;
+	font-size: 80%;
+	color: #666666;
+	}
+/* Automatiser la date entre parenthéses */ 
+.date:after {content:")";}
+.date:before {content:"(";} 
+
+/* style pour Baseline de Oqube */
+#Baseline {
+	color: #000000;
+	margin-bottom: 5px;
+	font-size: 80%;
+        position: absolute;
+        top: 0;
+        right:0;
+	}
+	
+/*style encadrement abandonné 
+
+.Important{
+	width: auto;
+	color: #0099FF;
+	text-align: center;
+	margin-top: 2%;
+	background-image: url(fond_achure.gif);}*/
+
+.CouleurCorporate  /*couleur pour OQube/corporate */ {color:#988642;}
+	
+/* code preformate */
+pre.example,pre.code {
+  padding: 10px;
+  background: #eef;
+  border: thin dashed #009;
+}
+
+
+div.source {
+  padding: 10px;
+  background: #eef;
+  border: thin dashed #009;
+}
+
+/* logos poweredBy */
+.logos {
+margin-top: 50px;
+}
+
+#poweredBy img {
+ margin: 5;
+ padding: 5;
+ border: none;
+}
+
+/*-----------------fin Style divers--------------------*/
+
+/* pour planner */
+
+/* enabled with planner-sectionalize.el */
+.section { margin: 0; padding: 10px;
+           margin-bottom: 15px;
+           font-size: 12px; }
+
+.section .section { margin: 0; margin-left: 5px;
+	                    font-size: 11px; }
+
+.details {
+  margin-bottom: 5px;
+  border-bottom: thin solid #fff;
+}
+
+.timestamp {
+   font-style: italic;
+   font-size: small;
+ }
+
+/* Tasks section */
+.task .A { color: red }
+.task .B { color: green }
+.task .C { color: navy }
+.task .done      { color: gray; text-decoration: line-through; }
+.task .cancelled { color: gray; text-decoration: italic; }
+
+
+
+ 
+/*----------------Structure --------------------*/
+	
+#Conteneur{
+	width:1020px;
+
+        padding: 10px;
+	padding-top:0;
+//        background: url("/images/sahara.png");
+        background-repeat: no-repeat;
+	position: relative;
+	}
+
+#Header {
+	width: 800px;
+	border: none;
+	padding: 10px;
+	}
+
+/*style pour Grand Titre en entête */	
+#Header .Title {
+	color:#0099FF;
+	font-size: 150%;
+	}
+	
+#Header .OQube /*style pour OOqube */{
+	font-family: "Futura", Geneva, Arial, Helvetica, sans-serif;
+	font-size: 200%;
+	color: #000000;}
+
+#Menu {
+	font-size: 110%;
+	margin-right: 10px;
+	margin-top: 100px;
+        text-align:right;
+	float: right;
+	}
+
+#Menu ul {
+	list-style-type: none;
+	line-height: 120%;
+	/*enlever indentation */
+	margin-left: 0px; 
+	padding-left: 0px;
+	}
+	
+#Menu ul ul {
+	list-style-type: none;
+	line-height: 120%;
+	/*enlever indentation */
+	margin-left: 5px; 
+	padding-left: 0px;
+	}
+
+#Menu li a:hover {
+   color: darkgrey;
+}
+
+#BlocPrincipal{
+	width: 800px;
+        overflow: auto;
+	padding: 5px;
+        background-color: white;
+       }
+
+#BlocPrincipal img {
+	width: auto;
+	margin: 5px;
+	border: 1px dashed #999999;
+        padding: 5px;
+	}
+	
+#BlocPrincipal .sommaire {
+   float: right;
+   width: 35%;
+       background: white;
+       border: 0;
+       margin-top:40px;
+   text-align: left;
+   padding: 10px;
+background-image: url(http://www.ikou.fr/squelettes/img/bg.gif);
+background-position: top left;
+background-repeat: repeat;}
+
+#footer {
+font-size: 80%;
+font-family: sans-serif;
+border-top: thin solid darkgray;
+margin-top: 5px;
+padding: 10px;
+	width:1020px;
+}
+
+#footer a:after {
+ content: "";
+}
+
+#footer img {
+vertical-align: middle;
+}
+
+
+.sommaire h1{border:0px;}
+
+	
+/*création de sommaire
+USAGE : programmer recup des h2 du bloc principal pour construire une liste ol numérotée avec des ancres sur chaques h2 */
+	
+#BlocPrincipal .sommaire ol {
+	line-height: 150%;
+	margin-left: 6px;
+	padding-left: 0px;
+	list-style-position: inside;}
+
+#Footer {
+	font-size: 60%;
+	text-align: center;
+	margin-top: 20px;
+}
+
+/*------fin structure--------------------*/	

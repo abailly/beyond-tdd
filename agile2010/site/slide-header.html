@@ -1,0 +1,29 @@
+<head>
+<title>More Bells and Whistles</title>
+<link rel="stylesheet" href="site/resources/recipes.css"/>
+<link rel="stylesheet" href="site/resources/slide.css"/>
+<script src="site/resources/jquery.js"></script>
+<script src="site/resources/jquery.chili.js"></script>
+<script src="site/resources/slide.js"></script>
+<script>
+ChiliBook.recipeFolder= "site/resources/";
+</script>
+</head>
+  <body>
+    <div id="slideshow">
+	<div id="titre" class="titre">Le titre</div>
+	<div id="content"></div>
+	<pre id="pre" class="javascript"></pre>
+	<form id="form">
+	  <div class="buttons">
+	    <input type="submit" value="Run" class="run" id="run"/>
+	    <input type="button" id="prev" value="&laquo; Prev"/>
+	    <input type="button" id="next" value="Next &raquo;"/>
+	  </div>
+	  <div id="container">
+	    <textarea id="code" wrap="off"></textarea>
+	    <ol id="results"></ol>
+	  </div>
+	</form>
+    </div>
+    <div id="slides" style="display: none;">
