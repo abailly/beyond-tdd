@@ -5,23 +5,21 @@
 module Slim.SlimServerTest where
 
 import Test.HUnit
-import Test.QuickCheck
-import Control.Monad(replicateM,foldM,liftM)
-import IO (stderr)
-import Data.Maybe
-import Slim.Slim
-import Slim.SlimServer
-import Slim.SlimClientIO
+
+import Slim
+
 import Control.Monad.State
 import Control.Concurrent(threadDelay,killThread)
 import qualified Data.Map as M
 
+allTests :: Test
 allTests = TestList [
   canCallFunctionsFromSlimMessage,
   canCallFunctionsFromSlimMessage,
   returnAnExceptionString
   ]
-  
+
+canCallFunctionsFromSlimMessage :: Test
 canCallFunctionsFromSlimMessage =
    "call one or more basic functions on current data state" ~: 
    TestList [
@@ -33,6 +31,7 @@ canCallFunctionsFromSlimMessage =
         testDivisionInput  `invoke`  divisionFixture ~?= testDivisionOutput
         ]
 
+canCallCallFunctionsOnTwoDifferentInstances :: Test
 canCallCallFunctionsOnTwoDifferentInstances =
    "can call mixed functions on 2 instances of the same 'class'" ~: TestList [
      runState (call factory) nothing ~?= ((A $ L [ S"1", S "OK"]), M.singleton "division" (Div 0 0)),
@@ -41,13 +40,15 @@ canCallCallFunctionsOnTwoDifferentInstances =
      testDivisionInput  `invoke`  nothing ~?= testDivisionOutput
      ]
 
+returnAnExceptionString :: Test
 returnAnExceptionString = 
   "exceptions are returned upon failures to invoke method" ~: TestList [
     evalState (sequence $ map call callNonExistentMethod) nothing ~?=  map A (answersWith nonExistentError) ,
     callNonExistentMethod `invoke`  nothing ~?=  A (L $ answersWith nonExistentError),
     callNonExistentInstance `invoke`  nothing ~?=  A (L $ answersWith noInstanceError)
     ]
-  
+
+canConnectToSlimServerAndInvokeMethods :: Test
 canConnectToSlimServerAndInvokeMethods = 
   "start & connect to slim server, then send commands" ~: 
   do tid <- startSlimServer port

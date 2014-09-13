@@ -1,23 +1,24 @@
 import ATMTest
 
 import IOAutomaton
-import ATM
+import ATM hiding (verbose)
 import Slim
-
+import SlimAutomaton
 import ATMSlimTest
 import Slim.SlimTest
-import qualified Slim.SlimServerTest as Server
 
-import IO (stderr)
 import qualified Data.Map as M
 
+import qualified Slim.SlimServerTest as Server
 import Test.HUnit hiding (Path,assert)
 import Test.QuickCheck.Monadic
 import Control.Monad
 import Control.Monad.Trans
 import Control.Monad.State
 import System.IO.Unsafe
-import System(getArgs)
+
+import System.Environment(getArgs)
+import System.IO(stderr)
 
 runTest :: Test -> IO Counts
 runTest  t = do (counts, _) <- runTestText (putTextToHandle stderr False) t

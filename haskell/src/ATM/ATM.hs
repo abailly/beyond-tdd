@@ -3,12 +3,11 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FlexibleContexts #-}
 
-module ATM.ATM where 
-import qualified IOAutomaton.IOAutomaton as A
-import qualified Control.Monad.State as S
+module ATM.ATM where
+
+import qualified IOAutomaton as A
 import qualified Data.Map as M
-import Control.Monad
-import Control.Monad.State
+import Control.Monad.State hiding (state)
 
 type CardRetained = String
 
@@ -71,7 +70,7 @@ enterCard _  s                                       = (Nothing, s { state = Sin
 
 enterPin :: Pincode -> AtmState -> (Maybe ATMOutput, AtmState)
 enterPin p (Atm EnteringPin (Just c@(Card p' _  _)) b) | p == p'   = (Just OK, Atm SelectingAction (Just c) b)
-enterPin p (Atm EnteringPin (Just c@(Card p' _  f)) b) | f < 2     = (Just FailedCode, Atm EnteringPin (Just c') b)
+enterPin _ (Atm EnteringPin (Just c@(Card _  _  f)) b) | f < 2     = (Just FailedCode, Atm EnteringPin (Just c') b)
                                                        | otherwise = (Just CardRetained, Atm Init Nothing b)
                                                        where
                                                          c' = c { failedCode = (failedCode c) + 1}
@@ -82,23 +81,23 @@ withdrawMoney (Atm SelectingAction c b)  = (Just OK, (Atm SelectingAmount c b) )
 withdrawMoney s                          = (Nothing, s { state = Sink} )
 
 enterAmount :: Int -> AtmState -> (Maybe ATMOutput, AtmState)
-enterAmount sum (Atm s (Just c@(Card  _ accountNo _)) b@(Bank m))
-    | (M.findWithDefault 0 accountNo m) >= sum  = (Just DeliverNotes, Atm SelectingAction (Just c) (Bank $ M.adjust ((-) sum) accountNo m))
-    | otherwise                                 = (Just NotEnoughBalance, Atm SelectingAction (Just c) b)
-enterAmount  _ s                                = (Nothing, s {state = Sink} )
+enterAmount amount (Atm _ (Just c@(Card  _ accountN _)) b@(Bank m))
+    | (M.findWithDefault 0 accountN m) >= amount  = (Just DeliverNotes, Atm SelectingAction (Just c) (Bank $ M.adjust ((-) amount) accountN m))
+    | otherwise                                   = (Just NotEnoughBalance, Atm SelectingAction (Just c) b)
+enterAmount  _ s                                  = (Nothing, s {state = Sink} )
 
 getBalance :: AtmState -> (Maybe ATMOutput, AtmState)
-getBalance (Atm SelectingAction (Just c@(Card  _ accountNo _)) b@(Bank m)) =  (Bal `fmap` (M.lookup accountNo m), Atm SelectingAction (Just c) b)
-getBalance s                                                               = (Nothing, s { state = Sink} )
+getBalance (Atm SelectingAction (Just c@(Card  _ accountN _)) b@(Bank m)) =  (Bal `fmap` (M.lookup accountN m), Atm SelectingAction (Just c) b)
+getBalance s                                                              = (Nothing, s { state = Sink} )
     
 initAtm :: AtmState
 initAtm = Atm Init Nothing (Bank M.empty)
           
 input :: Trans -> ATMInput 
-input (s,i,o,e) = i
+input (_,i,_,_) = i
 
 output :: Trans -> ATMOutput 
-output (s,i,o,e) = o
+output (_,_,o,_) = o
 
 action :: ATMInput -> AtmState -> (Maybe ATMOutput, AtmState)
 action (EnterCard c)    = enterCard c
@@ -117,7 +116,7 @@ instance A.IOAutomaton AtmState ATMState ATMInput ATMOutput where
   state  (Atm s _ _)  = s
   update a q          = a { state = q }
 
-type StateOfAtm = State AtmState (Maybe ATMOutput)
+type StateOfAtm m = StateT AtmState m (Maybe ATMOutput)
 
 class (Monad m) => ATM m a where
     startATM'      :: m a
@@ -127,15 +126,6 @@ class (Monad m) => ATM m a where
     withdrawMoney' :: m a
     enterAmount'   :: Int -> m a
     getBalance'    :: m a
-    
-instance ATM (State AtmState) (Maybe ATMOutput) where
-    startATM'      = State (\ s -> (Just OK, s))
-    exit'          = State exit
-    enterCard'     = State . enterCard
-    enterPin'      = State . enterPin
-    withdrawMoney' = State withdrawMoney
-    enterAmount'   = State . enterAmount
-    getBalance'    = State getBalance
     
 instance (Monad m) => ATM (StateT AtmState m) (Maybe ATMOutput) where
     startATM'        = StateT (\ s -> return (Just OK, s))
@@ -147,10 +137,11 @@ instance (Monad m) => ATM (StateT AtmState m) (Maybe ATMOutput) where
     enterCard'     c = StateT (return . enterCard c)
 
 
-evalATM :: Trans -> State AtmState Trans
-evalATM = State . A.eval
+evalATM :: (Monad m) => Trans -> StateT AtmState m Trans
+evalATM t = StateT (return . A.eval t)
 
+isValidPath :: [Trans] -> Bool
 isValidPath []                = True
-isValidPath ((s,i,o,Sink):xs) = False
+isValidPath ((_,_,_,Sink):_) = False
 isValidPath (_:xs)            = isValidPath xs
 

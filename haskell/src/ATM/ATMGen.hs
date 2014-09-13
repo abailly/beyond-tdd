@@ -3,14 +3,8 @@
 module ATM.ATMGen (module Test.QuickCheck)
 where
 import ATM.ATM
-import IOAutomaton.IOAutomaton
 import IOAutomaton.Generator
-import qualified Data.Map as M
-import Data.List
-import Data.Maybe
 import Test.QuickCheck
-import Test.QuickCheck.Gen(unGen)
-import System.Random(mkStdGen)
 import Control.Monad
 import Control.Applicative
 

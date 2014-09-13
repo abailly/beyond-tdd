@@ -2,17 +2,16 @@
 module ATMTest where
 
 import Test.HUnit
-import IOAutomaton.IOAutomaton(evalST,runAutomaton,Trace(T))
-import Control.Applicative
+import IOAutomaton hiding (state)
+
 import Control.Monad.Writer
-import Control.Monad.State
-import Test.QuickCheck
+import Control.Monad.State hiding (state)
+
 import qualified Data.Map as M
-import IO (stderr)
-import System.Random
-import ATM.ATM
-import Data.List
+
+import ATM
     
+atmTransitionsUpdateState :: Test
 atmTransitionsUpdateState = TestList [
                              (snd $ (enterCard myCard) initAtm)                                 ~?= Atm EnteringPin (Just myCard) (Bank M.empty)
                             ,(fst $ (enterCard myCard) (waitingForPin))                         ~?= Nothing
@@ -41,6 +40,7 @@ atmTransitionsUpdateState = TestList [
       myBank            = Bank $ M.singleton (Acc "123456") 100
       myBank'           = Bank $ M.singleton (Acc "123456") 0
 
+testATMMachineValidator :: Test
 testATMMachineValidator = "ATM validator" ~: TestList [
                            "check empty trace " ~: (runAutomaton (T []) initAtm) >>= (assertEqual "incorrect state" (Nothing, initAtm))
                           ,runAutomaton (T [ (Init, EnterCard card, OK, EnteringPin )]) initAtm ~?= Just (Just OK,initAtm {state = EnteringPin, card = Just card})
@@ -49,6 +49,7 @@ testATMMachineValidator = "ATM validator" ~: TestList [
     where
       card = Card { pin = Pin "1234" , accountNo = Acc "123456", failedCode = 0 }
 
+testATMStateT :: Test
 testATMStateT = "ATM State transformer" ~:
                 TestList [
                   "test valid sequence" ~: runStateT actions initAtm >>=

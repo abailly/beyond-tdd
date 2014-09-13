@@ -1,21 +1,14 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 module ATMSlimTest(testATMSlimProtocol
-                  ,testATMOracle
-                  ,module Test.HUnit
-                  ,module ATM.ATM
-                  ,module ATM.ATMSlim)
+                  ,testATMOracle)
     where
-import Slim.SlimClient
-import Slim.SlimClientIO
-import SlimAutomaton.SlimAutomaton
+import Slim
+import SlimAutomaton
 import Test.HUnit hiding (Path,assert)
-import Control.Applicative
-import Control.Monad.Writer
 import qualified Data.Map as M
-import System.Random
-import Slim.Slim
-import ATM.ATM
-import ATM.ATMSlim
+
+import ATM hiding (verbose)
+
 import Data.List
     
 evalActions :: [ Instruction String ] -> IO [(Instruction String, Answer)]
@@ -23,6 +16,7 @@ evalActions actions = runSlim (doSlim actions) slimAtm
     where
       slimAtm   = defaultSlim { config = defaultConfig { slimclasspath = [ "fitnesse.jar", "atm.jar" ] , verbose = True } }
 
+testATMSlimProtocol :: Test
 testATMSlimProtocol = "ATM <-> Slim protocol tests" ~:
                       TestList [
                           "check Creation" ~: evalActions  [startATM] 
@@ -66,8 +60,8 @@ testATMSlimProtocol = "ATM <-> Slim protocol tests" ~:
 
     where
       assertThrowsException :: String -> [ (Instruction String, Answer) ] -> Assertion
-      assertThrowsException exc []                = return ()
-      assertThrowsException exc [x@(i,A (S res))] = putStrLn (show x) >>
+      assertThrowsException _ []                  = return ()
+      assertThrowsException exc [x@(_,A (S res))] = putStrLn (show x) >>
                                                     if isPrefixOf ("__EXCEPTION__:" ++ exc) res then
                                                         return ()
                                                     else
@@ -76,7 +70,7 @@ testATMSlimProtocol = "ATM <-> Slim protocol tests" ~:
                                                     assertThrowsException exc xs
 
       assertResultStringMatch :: String -> [ (Instruction String, Answer) ] -> Assertion
-      assertResultStringMatch res [x@(i,A (S res'))]
+      assertResultStringMatch res [x@(_,A (S res'))]
                     | res == res'                  = putStrLn (show x)
       assertResultStringMatch res (x:xs)           = putStrLn (show x) >> assertResultStringMatch res xs
       assertResultStringMatch res xs               = fail $ "No matching result for "++ res ++ " in " ++ (show xs)
@@ -89,7 +83,7 @@ testATMSlimProtocol = "ATM <-> Slim protocol tests" ~:
       atm       = Atm Init Nothing bank
 
 
-
+testATMOracle :: Test
 testATMOracle = "oracle for ATM output" ~:
                 TestList [
                      interpret (Atm Init Nothing bank)            (EnterCard card) (A (S "/__VOID__/"))                                   ~?= Just OK

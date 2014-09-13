@@ -5,13 +5,13 @@ module Slim.SlimTest where
 
 import Test.HUnit
 import Test.QuickCheck
-import Control.Monad(replicateM,foldM,liftM,liftM2,liftM4,liftM5)
-import IO (stderr)
-import Data.Maybe
-import Slim.Slim
-import Slim.SlimClient
-import Slim.SlimClientIO
 
+import Control.Monad
+
+import Data.Maybe
+import Slim
+
+canEncodeNestedLists :: Test
 canEncodeNestedLists =
    TestList [
         (encode $ S "some.clas.path" )
@@ -124,6 +124,7 @@ testRenumberingOutput = [
  ]
 
 
+testCanRenumberInstructions :: Test
 testCanRenumberInstructions = "renumbering instructions" ~:
                               TestList [
                        "renumbering One Make element" ~:
@@ -140,6 +141,7 @@ testCanRenumberInstructions = "renumbering instructions" ~:
 
                            
 -- | Runs only if test is run in current directory
+slimClientSendAndReceiveMessages :: Test
 slimClientSendAndReceiveMessages =
     TestList [
        "slim client w/ match" ~: (runSlim (doSlim testDivisionInput) defaultSlim >>= 
@@ -163,7 +165,7 @@ slimClientSendAndReceiveMessages =
                                      endSlim
                                      return answers
         
-
+matchInstructionsToAnswers :: Test
 matchInstructionsToAnswers =
    "match instructions" ~: 
    TestList [
