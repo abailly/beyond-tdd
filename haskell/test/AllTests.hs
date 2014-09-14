@@ -44,7 +44,7 @@ runUnitTests = runTest $ TestList [
 
 main = do args <- getArgs 
           let debugSlim = checkArgs args
-          quickCheck (monadic (unsafePerformIO) (atmRespectsItsModel debugSlim)) -- >> runUnitTests
+          quickCheck (monadic (unsafePerformIO) (atmRespectsItsModel debugSlim))  >> runUnitTests
 
 checkArgs :: [ String ] -> Bool
 checkArgs [ "-v" ]  = True
