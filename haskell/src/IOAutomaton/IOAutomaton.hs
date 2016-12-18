@@ -1,6 +1,7 @@
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE AllowAmbiguousTypes    #-}
 {-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE MultiParamTypeClasses  #-}
+{-# LANGUAGE RankNTypes             #-}
 module IOAutomaton.IOAutomaton (
                                 Trace(T),
                                 IOAutomaton(..),
@@ -11,12 +12,12 @@ module IOAutomaton.IOAutomaton (
                                 evalTrace
                                 ) where
 
-import Control.Monad.Identity
-import Control.Monad
-import Control.Monad.State hiding (state)
+import           Control.Monad
+import           Control.Monad.Identity
+import           Control.Monad.State    hiding (state)
 
 -- | An IOAutomaton is a special kind of finite state automata.
--- Formally, the kind of IOAutomaton that we use can be defined as a tuple 
+-- Formally, the kind of IOAutomaton that we use can be defined as a tuple
 -- (Q,q0,Sink,I,O,\delta) where:
 --   - Q is the set of states of the automaton
 --   - q0 is the distinguished initial state
@@ -24,49 +25,49 @@ import Control.Monad.State hiding (state)
 --   - I is the input alphabet, an arbitrary type
 --   - O is the output alphatbet, another arbitrary type
 --   - \delta \subseteq Q x I x O x (Q \cup Sink) the set of transitions of the automaton
---  
--- A specific IOAutomaton instance is a model of the behavior of some 
+--
+-- A specific IOAutomaton instance is a model of the behavior of some
 -- system under test that can be used to:
 --  - generate traces, ie. specialized tests cases representing possible behavior
 --    of the SUT
 --  - validate output of the SUT against expectations (eg. play the role of an oracle)
--- 
--- Here we distinguish the set of formal states of the automaton (q) and the 
+--
+-- Here we distinguish the set of formal states of the automaton (q) and the
 -- state of the model (st), the latter usually being much more complex.
-class (Eq q, Eq i, Eq o, Show q, Show i, Show o) => 
+class (Eq q, Eq i, Eq o, Show q, Show i, Show o) =>
       IOAutomaton a q i o | a -> q i o where
-  
+
   -- ^Initial state of the automaton
   init :: a
-  
-  -- ^Terminal state. Note that as we consider only finite systems but one 
+
+  -- ^Terminal state. Note that as we consider only finite systems but one
   -- that can run forever and produce arbitrarily long traces, terminal state
   -- is a sink state. Reaching terminal state is considered a failure.
   sink :: a -> q
-  
+
   -- ^Input accessor.
   input :: (q, i, o, q) -> i
   input (_,i,_,_) = i
-  
+
   -- ^Output accessor.
   output :: (q, i, o, q) -> o
   output (_,_,o,_) = o
-  
-  -- ^Action of the automaton. 
-  -- This action is considered a failure, eg. an unacceptable transition in this 
+
+  -- ^Action of the automaton.
+  -- This action is considered a failure, eg. an unacceptable transition in this
   -- automaton's model state if it returns Nothing as first member of returned.
   action :: i -> a -> (Maybe o, a)
-  
+
   -- ^Associated formal state of a model state
   state :: a -> q
-  
+
   -- ^Update current state of this automaton
   update :: a -> q -> a
 
 -- |Evaluate a single transition given a certain Automaton
 -- This function relies on the underlying 'action' function to apply
--- the transition's input to the current state. 
-eval :: (IOAutomaton a q i o) => (q, i, o, q) -> a -> ((q, i, o, q), a) 
+-- the transition's input to the current state.
+eval :: (IOAutomaton a q i o) => (q, i, o, q) -> a -> ((q, i, o, q), a)
 eval t@(s, i, o, e) st | s == sink st = (t,st)
 eval   (s, i, o, e) st                = eval' (action i st)
      where
@@ -78,16 +79,16 @@ eval   (s, i, o, e) st                = eval' (action i st)
 -- Given a transition, it is applied in the context of a StateT monad
 -- whose state is the underlying automaton and whose result type is thus
 -- an output or a failure.
-actionST :: (Monad m, IOAutomaton a q i o) =>  
+actionST :: (Monad m, IOAutomaton a q i o) =>
             (q, i, o, q)  ->
             StateT a m (Maybe o)
 actionST (s, i, o ,e) = StateT (return . (action i))
 
 -- | Evaluate a transition within a State transformer.
--- The state of the StateT monad is the underlying automaton and 
+-- The state of the StateT monad is the underlying automaton and
 -- the result of running the eval inside the monad is another transition
-evalST :: (Monad m, IOAutomaton a q i o) => 
-          (q, i, o, q) ->  
+evalST :: (Monad m, IOAutomaton a q i o) =>
+          (q, i, o, q) ->
           StateT a  m (q, i, o, q)
 evalST t = StateT (return . (eval t))
 
@@ -98,7 +99,7 @@ transition st (i,o,f) = (st, i, o , f)
 -- A trace is simply a sequence of transitions.
 newtype Trace q i o =  T [ (q, i, o ,q) ]
     deriving (Show, Eq)
-             
+
 -- | Executes a complete trace in a given automaton within the StateT transformer monad.
 -- The trace is run over some initial state and produces a final state and a result which
 -- is deduced from sequencing actions over the trace: It can be either Nothing, meaning that

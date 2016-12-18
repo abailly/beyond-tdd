@@ -1,52 +1,64 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 module Slim.SlimClientIO where
-import Slim.Slim
-import Slim.SlimClient
-import Data.ByteString.UTF8 (fromString, toString)
-import Data.ByteString(hPutStrLn,hGet)
-import System.IO(Handle,hClose,hSetBuffering,hGetLine,
-                 hFlush,IOMode(..),BufferMode(..))
-import Text.Printf
-import System.Process
-import System.Exit
-import System.Info
-import Control.Concurrent
-import Control.Monad.State
-import Data.Maybe
-import Network.Socket
-import Network.BSD
+
+import           Control.Concurrent
+import           Control.Monad.State
+import           Data.ByteString      (hGet, hPutStrLn)
+import           Data.ByteString.UTF8 (fromString, toString)
+import           Data.Maybe
+import           Network.BSD
+import           Network.Socket
+import           Slim.Slim
+import           Slim.SlimClient
+import           System.Exit
+import           System.Info
+import           System.IO            (BufferMode (..), Handle, IOMode (..),
+                                       hClose, hFlush, hGetLine, hSetBuffering)
+import qualified System.IO            as IO
+import           System.Process
+import           Text.Printf
 
 data IOSlimState = IOSlimState { slimHandle :: Maybe ProcessHandle
-                               , config :: SlimConfig }
+                               , config     :: SlimConfig }
 
 instance SlimState IOSlimState where
   slimConfig = config
-                 
--- | Connect to the given host/port 
+
+-- | Connect to the given host/port
 connectTo :: String -> Integer -> IO Handle
 connectTo host port = do address <- inet_addr "127.0.0.1"
                          sock <- socket AF_INET Stream defaultProtocol
                          setSocketOption sock KeepAlive 1
                          connect sock (SockAddrInet ((fromIntegral port) :: PortNumber) address)
                          socketToHandle sock ReadWriteMode
-  
+
 countAnswerChars :: Handle -> IO Int
-countAnswerChars h = hGet h 6 >>= return . readInt . toString
+countAnswerChars h = do
+  c <- hGet h 6
+  putStrLn $ "counting answer chars " ++ toString c
+  return $ readInt (toString c)
+
+countAnswerCharsLog :: Handle ->  Handle -> IO Int
+countAnswerCharsLog log h = do
+  c <- hGet h 6
+  IO.hPutStrLn log $ "counting answer chars " ++ (toString c)
+  return $ readInt (toString c)
 
 readAnswer :: Handle -> Int -> IO String
-readAnswer h n = hGet h (n+1) >>= return . (( printf "%06d" n) ++) . toString 
+readAnswer h n = hGet h (n+1) >>= return . (( printf "%06d" n) ++) . toString
 
 sendToSlimAndClose :: Int -> [Instruction String] -> IO Answer
 sendToSlimAndClose port insts = do cnx <- connectTo "localhost" (toInteger port)
                                    hSetBuffering cnx (BlockBuffering Nothing)
+                                   hGetLine cnx
                                    hPutStrLn cnx ((fromString . encode) insts)
                                    hFlush cnx
                                    returns <- (countAnswerChars cnx >>= readAnswer cnx)
                                    hClose cnx
                                    let Just answer = decode  returns
                                    return answer
-                                   
-                                   
+
+
 instance SlimIO IO IOSlimState where
     ioTerminate st = do liftIO $ putStrLn "Waiting for termination of Slim"
                         liftIO $ waitForProcess . fromJust . slimHandle $ st
@@ -68,7 +80,7 @@ instance SlimIO IO IOSlimState where
     doStartSlim state = do pr <- liftIO $ runProcess  exe ["-cp", classpath, "fitnesse.slim.SlimService", port] wd Nothing Nothing Nothing Nothing
                            liftIO $ threadDelay 500000
                            st <- get
-                           put st { slimHandle = Just pr } 
+                           put st { slimHandle = Just pr }
         where
           config        = (slimConfig state)
           exe           = slimexecutable config
@@ -80,5 +92,5 @@ instance SlimIO IO IOSlimState where
                             _         -> ":"
           classpath     = foldl (\ x y -> x ++ pathSeparator ++ y) "." (slimclasspath config)
 
-                                                    
+
 defaultSlim   = IOSlimState  Nothing defaultConfig

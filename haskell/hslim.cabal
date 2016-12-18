@@ -14,26 +14,24 @@ Maintainer:           Arnaud Bailly <arnaud@capital-match.com>
 Build-Depends:        base
 Cabal-version:        >= 1.20
 
--- need to add data files for 'ui' directory
-
 Library
   Default-Language:   Haskell2010
-  build-depends:      base >= 4
-                     ,containers >= 0.5
-                     ,data-default == 0.5.3
-                     ,filepath == 1.3.0.2
-                     ,directory == 1.2.1.0
-                     ,QuickCheck ==2.7.6
-                     ,fgl == 5.5.0.1
-                     ,graphviz == 2999.17.0.1
-                     ,random == 1.0.1.3
-                     ,mtl == 2.1.3.1
-                     ,parsec == 3.1.5
-                     ,utf8-string == 0.3.8
-                     ,bytestring == 0.10.4.0
-                     ,process == 1.2.0.0
-                     ,network == 2.5.0.0
-                     ,text == 1.1.1.3
+  build-depends:      base
+                     ,containers
+                     ,data-default
+                     ,filepath
+                     ,directory
+                     ,QuickCheck
+                     ,fgl
+                     ,graphviz
+                     ,random
+                     ,mtl
+                     ,parsec
+                     ,utf8-string
+                     ,bytestring
+                     ,process
+                     ,network
+                     ,text
   hs-source-dirs:     src
   exposed-modules:    IOAutomaton
                      ,Slim
@@ -56,7 +54,13 @@ Library
                      -Wwarn
                      -fwarn-tabs
 
---  other-modules:     
+Executable hslimserver
+  default-language:  Haskell2010
+  main-is:           hslimserver.hs
+  hs-source-dirs:    slim
+  ghc-options:      -threaded
+  build-depends:     base
+                    ,hslim
 
 Test-Suite tests
    Default-Language:  Haskell2010
@@ -68,14 +72,14 @@ Test-Suite tests
                      -Wall
                      -Wwarn
                      -fwarn-tabs
-   build-depends:  base >= 4
+   build-depends:  base
                   , hslim
                   , wreq
-                  , containers == 0.5.5.1
-                  , mtl == 2.1.3.1
-                  , random == 1.0.1.3
-                  , HUnit == 1.2.5.2
-                  , QuickCheck ==2.7.6
+                  , containers
+                  , mtl
+                  , random
+                  , HUnit
+                  , QuickCheck
                   , test-framework
                   , test-framework-hunit
                   , test-framework-quickcheck2

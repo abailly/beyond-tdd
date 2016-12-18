@@ -1,5 +1,5 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE MultiParamTypeClasses      #-}
 module Slim.SlimClient(slimClient
                  ,doSlim
                  ,Slim(..)
@@ -11,19 +11,19 @@ module Slim.SlimClient(slimClient
                  ,doSendSlim
                  ,endSlim
                  ,SlimIO(..)
-) 
+)
 where
-import Slim.Slim
-import Control.Monad
-import Data.Maybe
-import System.Exit(ExitCode)
-import Control.Monad.State
+import           Control.Monad
+import           Control.Monad.State
+import           Data.Maybe
+import           Slim.Slim
+import           System.Exit         (ExitCode)
 
 -- |Abstract state of the Slim backend.
 -- Provides configuration information.
 class SlimState sst where
-  slimConfig :: sst -> SlimConfig 
-  
+  slimConfig :: sst -> SlimConfig
+
 -- | A class for abstracting low-level I/O of slim with a given backend
 -- Its main purpose is to make testing of Slim Input/Output easier by
 -- adding another level of abstraction with a default instantiation to
@@ -37,8 +37,8 @@ class (MonadIO m, SlimState st) => SlimIO m st where
     ioTerminate  :: st -> Slim m st ExitCode
 
 newtype Slim m st a = Slim { runS :: StateT st m a }
-    deriving (Monad, MonadIO, MonadState st)
-    
+    deriving (Functor, Applicative, Monad, MonadIO, MonadState st)
+
 runSlim :: (SlimIO m st) => Slim m st a -> st -> m a
 runSlim = evalStateT . runS
 
@@ -50,7 +50,7 @@ doSlim insts = let insts' = renumber insts
 doSendSlim :: (SlimIO m st) => [ Instruction String ] -> Slim m st [( Instruction String, Answer)]
 doSendSlim insts = let insts' = renumber insts
                    in sendSlim insts'  >>= return . matchQandA insts'
-                  
+
 slimClient :: (SlimIO m st) => [ Instruction String ] -> Slim m st (Maybe Answer)
 slimClient call = do startSlim
                      answer <- sendSlim call
@@ -65,15 +65,15 @@ startSlim = do st <- get
                doStartSlim st
 
 sendSlim :: (SlimIO m st) => [ Instruction  String ] -> Slim m st (Maybe Answer)
-sendSlim insts  = 
+sendSlim insts  =
       do let msgs = encode insts
          slim <- get
-         answer <- fetchAnswers slim msgs 
+         answer <- fetchAnswers slim msgs
          return $ (decode answer :: Maybe Answer)
 
 data SlimConfig = SlimConfig {slimport       :: Integer,    -- ^The port this slim instance shall listen on
                               slimexecutable :: FilePath,   -- ^the Slim executable (eg. fitnesse.jar)
-                              slimclasspath  :: [FilePath], -- ^ 
+                              slimclasspath  :: [FilePath], -- ^
                               executiondir   :: FilePath,
                               verbose        :: Bool
                              }

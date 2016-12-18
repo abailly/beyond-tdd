@@ -1,17 +1,17 @@
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE TypeSynonymInstances #-}
-{-# LANGUAGE OverlappingInstances #-}
-{-# LANGUAGE IncoherentInstances #-}
+{-# LANGUAGE FlexibleContexts           #-}
+{-# LANGUAGE FlexibleInstances          #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE IncoherentInstances        #-}
+{-# LANGUAGE OverlappingInstances       #-}
+{-# LANGUAGE TypeSynonymInstances       #-}
 
 
 module Slim.Slim where
-import Text.Printf
-import Control.Monad
-import Data.List
-import Text.ParserCombinators.Parsec
-import Debug.Trace
+import           Control.Monad
+import           Data.List
+import           Debug.Trace
+import           Text.ParserCombinators.Parsec
+import           Text.Printf
 
 data Instruction id = Import id PackName
                  | Make  id Instance Class  [ Argument ]
@@ -57,11 +57,11 @@ instance SlimEncodable NestedList where
                            ]
 
 instance SlimEncodable Answer where
-  encode (A l) = encode l
+  encode (A l)  = encode l
   encode (KO s) = encode ("__EXCEPTION__:" ++ s)
 
 class SlimDecodable a where
-  decode :: String -> Maybe a 
+  decode :: String -> Maybe a
 
 
 instance SlimDecodable NestedList where
@@ -71,7 +71,10 @@ instance SlimDecodable NestedList where
 
 
 readInt :: String -> Int
-readInt s = x where (x,_):_ = (reads :: String -> [(Int,String)]) s
+readInt s = case reads s of
+              (x,_):_ -> x
+              e       -> error $ "cannot read int from " ++ show e
+
 
 
 slimparser  =   do len <- lengthOfData ; char ':'
@@ -82,7 +85,7 @@ slimparser  =   do len <- lengthOfData ; char ':'
 	      manyStrings n     = count n (do nest <- slimparser; char ':'
 	                                      return nest)
 	      stringParser len  = fmap S (contentOfLength len)
-	      listParser        = do char '[' 
+	      listParser        = do char '['
 	                      	     size    <- lengthOfData     ; char ':'
 	                      	     strings <- manyStrings size ; char ']'
 	                      	     return $ L strings
@@ -98,7 +101,7 @@ instance (SlimEncodable a) => SlimEncodable [ a ] where
 
 instance SlimEncodable (Instruction String) where
   encode (Import id path)
-       = encode [ id , "import", path ] 
+       = encode [ id , "import", path ]
   encode (Make id inst cls args)
        = encode ( [ id , "make", inst, cls ] ++ args)
   encode (Call id inst meth args)
@@ -111,16 +114,16 @@ instance SlimDecodable [Instruction String] where
                nest = decode s  :: Maybe NestedList
                fromNestedList :: [NestedList] -> [ String ]
                fromNestedList ((S s : rest)) = s : (fromNestedList rest)
-               fromNestedList ([])             = []
+               fromNestedList ([])           = []
                decode' x@(L [S id, S "import", S pack]) = trace (show x) (Import id pack)
                decode' x@(L (S id : S "make" : S inst:  S cls : args)) = trace (show x) (Make id inst cls (fromNestedList args))
                decode' x@(L (S id : S "call" : S inst:  S cls : args)) = trace (show x) (Call id inst cls (fromNestedList args))
                decode' x@(L (S id : S "callAndAssign" : S inst: S var :  S cls : args)) = trace (show x) (CallAndAssign id inst var cls (fromNestedList args))
                decode' x    = trace (show x) (Import "" "")
              in case nest of
-               Just (L insts) -> Just (map decode' insts) 
+               Just (L insts) -> Just (map decode' insts)
                Nothing        -> Nothing
-                          
+
 instance SlimDecodable Answer where
   decode s = let
                nest = decode s  :: Maybe NestedList
@@ -133,13 +136,13 @@ instance SlimDecodable Answer where
 idOf :: Instruction String -> String
 idOf (Import         id _)       = id
 idOf (Make           id _ _ _)   = id
-idOf (Call           id _ _ _)   =  id 
+idOf (Call           id _ _ _)   =  id
 idOf (CallAndAssign  id _ _ _ _) = id
 
 matchQandA :: [Instruction String] -> Maybe Answer -> [ (Instruction String, Answer)]
-matchQandA insts  Nothing              = map (\ i -> (i , KO "No answer from client")) insts 
-matchQandA insts (Just e@(KO reason))  = map (\ i -> (i ,e)) insts 
-matchQandA insts (Just (A (L as)))    = [(q, a) | q <- insts, 
+matchQandA insts  Nothing              = map (\ i -> (i , KO "No answer from client")) insts
+matchQandA insts (Just e@(KO reason))  = map (\ i -> (i ,e)) insts
+matchQandA insts (Just (A (L as)))    = [(q, a) | q <- insts,
                                                   a <- matchOneAnswer as q]
 
 matchOneAnswer :: [ NestedList ] -> Instruction String -> [Answer]
@@ -150,14 +153,14 @@ matchOneAnswer []                         q               = [KO "No answer from 
 renumber :: [ Instruction String ] -> [ Instruction String]
 renumber insts = renumberFrom 1 insts
     where
-      renumberFrom n (x:xs)                     = setId x n : renumberFrom (n+1) xs
-      renumberFrom _ []                         = []
+      renumberFrom n (x:xs) = setId x n : renumberFrom (n+1) xs
+      renumberFrom _ []     = []
       setId :: Instruction a -> Int -> Instruction String
       setId  (Make _ id cls pars)               n = Make (show n) id cls pars
       setId (Call _ id ope pars)                n = Call (show n) id ope pars
       setId (CallAndAssign _ id label ope pars) n = CallAndAssign (show n) id label ope pars
       setId (Import _ scope)                    n = Import (show n) scope
-      
+
 isException :: String -> Answer -> Bool
 isException exc (A (S msg)) = isPrefixOf ("__EXCEPTION__:" ++ exc) msg
 

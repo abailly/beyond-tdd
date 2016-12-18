@@ -2,59 +2,69 @@
 
 module Slim.SlimServer where
 
-import Slim.Slim
-import Slim.SlimClientIO
-import Control.Monad.State hiding (void)
-import qualified Data.Map as M
-import Data.Map((!))
-import Data.ByteString.UTF8 (fromString)
-import Data.ByteString(hPutStrLn,hGet)
-import System.IO(hSetBuffering,
-                 hFlush,IOMode(..),BufferMode(..))
-import Control.Applicative
-import Network.Socket
-import Control.Concurrent(forkIO,ThreadId)
-import Control.Arrow
+import           Control.Monad.State  hiding (void)
+import qualified Data.ByteString      as BS
+import           Data.ByteString.UTF8 (fromString)
+import           Data.Map             ((!))
+import qualified Data.Map             as M
+import           Slim.Slim
+import           Slim.SlimClientIO
+
+import           Control.Arrow
+import           Control.Concurrent   (ThreadId, forkIO)
+import           Network.Socket
+import           System.IO
 
 -- |Starts a slim server on given port and returns this port
 startSlimServer :: Int -> IO ThreadId
-startSlimServer port = 
+startSlimServer port =
   (forkIO $ doServe port)
-  
-doServe :: Int -> IO ()  
+
+doServe :: Int -> IO ()
 doServe port =
   do address <- inet_addr "127.0.0.1"
      sock <- socket AF_INET Stream defaultProtocol
      let addr = SockAddrInet ((fromIntegral port) :: PortNumber) address
      bindSocket sock addr
      listen sock 5
+     putStrLn $ "started slim server on port "++ show port
      loopOn sock
-     
-loopOn :: Socket -> IO ()
-loopOn sock = do (client, clientAddress) <- accept sock
-                 answerRequest client
-                 sClose client
-                 return ()  -- should be a loop
 
-answerRequest :: Socket -> IO ()
-answerRequest sock = do hdl <- socketToHandle sock ReadWriteMode 
-                        hSetBuffering hdl (BlockBuffering Nothing)
-                        calls <- (countAnswerChars hdl >>= readAnswer hdl)
-                        let Just calls' = (decode calls) :: Maybe [Instruction String]
-                        let st = M.empty :: M.Map String Div
-                        let answer =  invoke calls' st
-                        hPutStrLn hdl ((fromString . encode) answer)
-                        hFlush hdl
-                        return ()
+loopOn :: Socket -> IO ()
+loopOn sock = withFile ".hslimserver.log" AppendMode $
+              \ log -> do hSetBuffering log LineBuffering
+                          (client, clientAddress) <- accept sock
+                          hPutStrLn log $ "connection from " ++ (show clientAddress)
+                          answerRequest log client
+                          sClose client
+                          return ()  -- should be a loop
+
+answerRequest :: Handle -> Socket -> IO ()
+answerRequest log sock = do hdl <- socketToHandle sock ReadWriteMode
+                            hSetBuffering hdl (BlockBuffering Nothing)
+                            hPutStrLn log $ "sending version"
+                            _ <- BS.hPutStr hdl (fromString "Slim -- V0.3\n")
+                            hFlush hdl
+                            count <- countAnswerCharsLog log hdl
+                            calls <- readAnswer hdl count
+                            let Just calls' = (decode calls) :: Maybe [Instruction String]
+                            hPutStrLn log $ "Received: " ++ (show calls')
+                            -- state is not generic
+                            let st = M.empty :: M.Map String Div
+                            let answer =  invoke calls' st
+                            hPutStrLn log $ "Sending: " ++ (show answer)
+                            BS.hPutStrLn hdl ((fromString . encode) answer)
+                            hFlush hdl
+                            return ()
 
 class Invokable i where
   call :: Instruction String -> State i Answer
   make :: [ String ] -> i
-    
+
 instance (Invokable i) => Invokable (M.Map String i) where
   call c@(Call x instanc t a) = do m <- get
                                    let (result, st) = tryCall c m
-                                   case st of 
+                                   case st of
                                      Nothing -> put m
                                      Just s' -> put $ M.insert instanc s' m
                                    return $ result
@@ -63,37 +73,37 @@ instance (Invokable i) => Invokable (M.Map String i) where
                             return $ ok x
   make _ = M.empty
 
-tryCall c@(Call x instanc t a) state = case M.lookup instanc state  of 
+tryCall c@(Call x instanc t a) state = case M.lookup instanc state  of
   Nothing  -> (exception x ***  id) ( "NO_INSTANCE " ++ instanc, Nothing)
   Just obj -> (id *** Just) $ runState (call c) obj
-  
+
 invoke :: (Invokable s) => [ Instruction String ] -> s -> Answer
-invoke calls = answers . evalState (sequence $ map call calls) 
+invoke calls = answers . evalState (sequence $ map call calls)
 
 answers :: [ Answer ] -> Answer
 answers as = A $ L (answers' as)
   where
     answers' []         = []
-    answers' ((A a):as) = a : answers' as 
-    
+    answers' ((A a):as) = a : answers' as
+
 void x = A (L [ S x, S "/__VOID__/"])
 exception x m = A (L [ S x, S ("__EXCEPTION__: " ++ m)])
 ok   x = A ( L [S x , S "OK"] )
 
 val :: (Show v) => String -> v -> Answer
 val  x v = A ( L [S x , S $ show v] )
-  
--- |Division data-type, used for testing purpose much like the classical eg.Division 
+
+-- |Division data-type, used for testing purpose much like the classical eg.Division
 -- from standard fitnesse documentation.
 -- It should be possible to generate a lot of stuff using Template Haskell...
 
-data Div = Div { numerator :: Double, 
-                 denominator :: Double }                           
+data Div = Div { numerator   :: Double,
+                 denominator :: Double }
          deriving (Eq,Show)
 
-setNumerator   d div = div { numerator   = d } 
-setDenominator d div = div { denominator = d } 
-getNumerator         = numerator 
+setNumerator   d div = div { numerator   = d }
+setDenominator d div = div { denominator = d }
+getNumerator         = numerator
 getDenominator       = denominator
 quotient  d          = numerator d / denominator d
 

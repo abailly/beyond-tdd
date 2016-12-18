@@ -75,7 +75,7 @@ atmRespectsItsModel debug =
                            ) defaultSlim { config = defaultConfig { slimclasspath = [ "fitnesse.jar", "atm.jar" ] , verbose = debug } }
        run $ putStrLn $ case b' of 
          Nothing -> "Success"
-         _       -> "Failure at "++ (show b')
+         x       -> "Failure at "++ (show b') ++ " : " ++ (show x)
        assert (b' == Nothing)
     where
       nonEmpty (T []) = False

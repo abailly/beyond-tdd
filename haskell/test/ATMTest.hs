@@ -65,7 +65,7 @@ testATMStateT = "ATM State transformer" ~:
                      where
                        actionsWithExit = sequence $ map (evalATM) ([(Init,EnterCard (Card {pin = Pin "1234", accountNo = Acc "234567", failedCode = 1}),OK,EnteringPin)
                                                                       ,(EnteringPin,Exit,OK,Init)
-                                                                      ,(Init,EnterCard (Card {pin = Pin "2345", accountNo = Acc "123456", failedCode = 2}),OK,EnteringPin)])
+                                                                      ,(Init,EnterCard (Card {pin = Pin "2345", accountNo = Acc "123456", failedCode = 2}),CardRetained,Init)])
                        actions = sequence $ map (runAndShow) ([(Init,EnterCard card,OK,EnteringPin)
                                                               ,(EnteringPin,EnterPinCode (Pin "5678"),FailedCode,EnteringPin)
                                                               ,(EnteringPin,EnterPinCode (Pin "1234"),OK,SelectingAction)])
